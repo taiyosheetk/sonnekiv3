@@ -1,0 +1,1500 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="融雪 損益">
+<meta name="theme-color" content="#242C31">
+<title>融雪設備 損益シミュレーター</title>
+<style>
+:root{
+  --ink:#11181C; --sub:#56676F; --faint:#8899A1; --line:#DCE3E6; --field:#F3F6F7;
+  --panel:#FFF; --bg:#E9EEF0; --ice:#1F5F86; --iceSoft:#E2EDF3;
+  --on:#0E7C5A; --onSoft:#E0F0EA; --warn:#8A5608; --warnSoft:#F7EEDC;
+  --off:#AF2A1F; --offSoft:#F8E8E6; --asphalt:#242C31; --scrap:#C6D1D6; --rutHot:#E08A1E;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+  padding:calc(env(safe-area-inset-top) + 18px) calc(env(safe-area-inset-right) + 14px)
+          calc(env(safe-area-inset-bottom) + 64px) calc(env(safe-area-inset-left) + 14px);
+}
+.wrap{max-width:1000px;margin:0 auto}
+input,select,button,textarea{font:inherit;color:inherit}
+input,select,textarea{font-size:16px}
+:focus-visible{outline:2px solid var(--ice);outline-offset:2px}
+
+/* ---- header plate ---- */
+.plate{background:var(--asphalt);border-radius:6px;padding:15px 17px}
+.plate-top{display:flex;gap:12px;align-items:flex-start;justify-content:space-between}
+.plate .eyebrow{font-size:10px;letter-spacing:.22em;color:#8FA3AD;margin-bottom:5px}
+.plate .ttl{font-size:19px;color:#F2F6F7}
+.ghost{background:none;border:1px solid #FFFFFF2E;color:#B7C7CF;border-radius:4px;
+  min-height:38px;padding:0 13px;font-size:12px;cursor:pointer;flex:none}
+.ghost:active{background:#FFFFFF14}
+.hero{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:flex-end;justify-content:space-between;
+  background:#00000038;border-radius:5px;padding:13px 15px;margin-top:14px}
+.hero-l{display:flex;align-items:center;gap:9px;min-width:0;flex:1 1 210px}
+.lamp{width:11px;height:11px;border-radius:50%;flex:none;box-shadow:0 0 0 3px #00000030}
+.vtxt{font-size:14px;color:#EAF0F2;line-height:1.5}
+.hero-n{text-align:right;flex:0 1 auto;margin-left:auto}
+.hero-lb{font-size:11px;letter-spacing:.06em;color:#93A7B1;margin-bottom:3px}
+.hero-v{font-family:var(--mono);font-size:28px;line-height:1.1;font-variant-numeric:tabular-nums;color:#F2F6F7}
+.hero-sub{font-family:var(--mono);font-size:12px;color:#93A7B1;margin-top:4px}
+
+/* ---- tabs ---- */
+.seg{display:flex;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:5px;margin-top:12px}
+.seg button{flex:1;min-height:46px;border:none;background:none;border-radius:4px;font-size:14px;color:var(--sub);cursor:pointer}
+.seg button[aria-selected="true"]{background:var(--asphalt);color:#F2F6F7}
+
+/* ---- cards ---- */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:18px;margin-top:12px}
+.card.dashed{border-style:dashed;border-color:var(--sub)}
+.sec{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.sec h2{margin:0;font-size:15px;font-weight:600;letter-spacing:.02em;display:flex;align-items:center;gap:9px}
+.step{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--faint);
+  border:1px solid var(--line);border-radius:3px;padding:3px 7px;flex:none}
+.step.out{color:var(--ice);border-color:#BFD6E3;background:var(--iceSoft)}
+.lede{font-size:12.5px;color:var(--sub);line-height:1.75;margin:0 0 14px}
+.grid{display:grid;gap:12px}
+.g-in{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.g-pri{grid-template-columns:repeat(auto-fit,minmax(150px,232px))}
+.g-2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.g-st{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+
+/* ---- fields ---- */
+label.f{display:block}
+label.f .lb{display:block;font-size:12px;letter-spacing:.05em;color:var(--sub);margin-bottom:5px}
+.iw{position:relative;display:block}
+.iw input{width:100%;min-height:46px;padding:8px 40px 8px 11px;background:var(--field);
+  border:1px solid var(--line);border-radius:4px;font-family:var(--mono);text-align:right;outline:none}
+.iw input.txt{font-family:inherit;text-align:left;padding-right:11px}
+.iw .u{position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--faint);pointer-events:none}
+.iw input:focus{border-color:var(--ice);box-shadow:0 0 0 3px rgba(31,95,134,.14);background:#fff}
+.iw input.bad{border-color:var(--off);background:#FDF3F2}
+select.sel{width:100%;min-height:46px;padding:8px 11px;background:var(--field);border:1px solid var(--line);
+  border-radius:4px;outline:none}
+
+.btn{min-height:44px;padding:0 16px;background:#fff;border:1px solid var(--line);border-radius:4px;
+  color:var(--ice);font-size:14px;cursor:pointer}
+.btn:active{background:var(--iceSoft);border-color:var(--ice)}
+.btn.sm{min-height:40px;padding:0 12px;font-size:13px}
+.btn.del{color:var(--faint);border-color:transparent;background:none;min-width:44px;padding:0;font-size:20px}
+
+/* ---- disclosure ---- */
+details.more{margin-top:14px;border-top:1px dashed var(--line);padding-top:11px}
+details.more>summary{list-style:none;cursor:pointer;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;
+  font-size:13px;color:var(--ice);min-height:34px}
+details.more>summary::-webkit-details-marker{display:none}
+details.more>summary::before{content:"＋ ";}
+details.more[open]>summary::before{content:"− ";}
+details.more .sumline{font-family:var(--mono);font-size:11.5px;color:var(--faint)}
+details.more .body{margin-top:12px}
+details.help{background:var(--panel);border:1px solid var(--line);border-radius:6px;margin-top:12px}
+details.help>summary{list-style:none;cursor:pointer;padding:15px 18px;font-size:14px;
+  display:flex;justify-content:space-between;align-items:center;gap:10px}
+details.help>summary::-webkit-details-marker{display:none}
+details.help>summary::after{content:"＋";color:var(--faint)}
+details.help[open]>summary::after{content:"−"}
+details.help .body{padding:0 18px 18px}
+dl.gloss{margin:0}
+dl.gloss dt{font-size:13px;margin-top:12px;color:var(--ink)}
+dl.gloss dt:first-child{margin-top:0}
+dl.gloss dd{margin:3px 0 0;font-size:12.5px;color:var(--sub);line-height:1.8}
+dl.gloss code{font-family:var(--mono);font-size:12px;background:var(--field);padding:1px 5px;border-radius:3px}
+
+/* ---- items ---- */
+.item{border:1px solid var(--line);border-radius:5px;padding:12px;margin-bottom:10px;background:#FCFDFD}
+.item-head{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.item-head input{flex:2 1 180px;min-height:44px;padding:8px 11px;background:var(--field);border:1px solid var(--line);border-radius:4px;outline:none}
+.item-head select{flex:1 1 150px;min-height:44px}
+.qline{font-family:var(--mono);font-size:13px;color:var(--sub);margin-bottom:10px}
+.qline .qs{font-family:inherit;font-size:11.5px;color:var(--faint)}
+.g-4{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.rowres{margin-top:11px;border-top:1px dashed var(--line);padding-top:9px;display:flex;flex-wrap:wrap;
+  gap:3px 16px;font-family:var(--mono);font-size:12px;color:var(--sub)}
+
+/* ---- stats ---- */
+.stat .l{font-size:12px;color:var(--sub);margin-bottom:3px;line-height:1.45}
+.stat .v{font-family:var(--mono);font-size:16px;font-variant-numeric:tabular-nums}
+.stat .s{font-family:var(--mono);font-size:11.5px;color:var(--faint);margin-top:2px}
+.stat.big .v{font-size:24px}
+.stat{padding:9px 0}
+.hr{border-top:1px solid var(--line);margin-top:6px}
+
+/* ---- road ---- */
+.road{position:relative;height:74px;background:var(--asphalt);border-radius:4px;overflow:hidden}
+.road .warmzone{position:absolute;top:0;bottom:0;right:0;background:#2F3B34}
+.road .rut{position:absolute;left:0;right:0;height:4px;background:#4C5C65}
+.road .rut.hot{background:var(--rutHot);left:auto}
+.road .bemark{position:absolute;top:0;bottom:0;width:1px;background:#FFFFFF80}
+.road .cur{position:absolute;top:0;bottom:0;width:2px;background:#fff;transform:translateX(-1px)}
+.road .chip{position:absolute;top:8px;padding:3px 8px;border-radius:3px;font-family:var(--mono);font-size:12px;white-space:nowrap}
+.road .zlab{position:absolute;bottom:6px;font-size:10px;letter-spacing:.1em;color:#FFFFFFA6;white-space:nowrap}
+.ticks{display:flex;justify-content:space-between;margin-top:6px;font-family:var(--mono);font-size:11px;color:var(--faint)}
+
+/* ---- misc ---- */
+.cut{display:flex;gap:3px;height:48px}
+.cut i{flex:1;min-width:7px;background:var(--scrap);border-radius:2px;overflow:hidden;display:block}
+.cut i b{display:block;height:100%;background:var(--ice)}
+.legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--sub);align-items:center}
+.legend span{display:flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:2px;display:inline-block;flex:none}
+.mrow{border:1px solid var(--line);border-radius:5px;padding:12px;margin-bottom:8px;cursor:pointer;background:#fff;width:100%;text-align:left;display:block}
+.mrow[aria-pressed="true"]{border-color:var(--ice);background:#F7FAFB;box-shadow:inset 3px 0 0 var(--ice)}
+.mrow .mh{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:9px}
+.mrow .mn{font-size:14px}
+.mrow .md{font-size:12px;color:var(--faint);margin-top:3px;line-height:1.6}
+.mrow .pick{font-size:12px;color:var(--ice);flex:none}
+.mcells{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mcell{padding:9px 10px;border-radius:4px;background:var(--field)}
+.mcell .cl{font-size:11px;margin-bottom:3px}
+.mcell .cv{font-family:var(--mono);font-size:15px}
+.mcell .cp{font-family:var(--mono);font-size:11px}
+.note{padding:12px 14px;border-radius:4px;font-size:13px;line-height:1.75;color:var(--sub);margin-top:4px}
+.tip{font-size:12px;color:var(--faint);line-height:1.8;margin-top:8px}
+.warnbar{background:var(--warnSoft);border:1px solid #E5D2AC;border-radius:6px;padding:12px 14px;
+  margin-top:12px;font-size:13px;color:#6F4506;line-height:1.7}
+.warnbar ul{margin:6px 0 0;padding-left:1.15em}
+.warnbar li{margin-top:3px}
+.next{border-left:4px solid var(--ice)}
+.next .lead{font-size:15px;line-height:1.75}
+.next ul{margin:10px 0 0;padding-left:1.15em;font-size:13px;line-height:1.95;color:var(--sub)}
+.next ul b{color:var(--ink)}
+.saved{display:flex;align-items:center;gap:10px;padding:9px 11px;background:var(--field);border-radius:4px;margin-bottom:7px}
+.saved .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
+.saved .dt{font-size:11px;color:var(--faint)}
+.copybox{width:100%;min-height:150px;margin-top:10px;font-family:var(--mono);font-size:12px;line-height:1.7;
+  padding:11px;border:1px solid var(--line);border-radius:4px;background:var(--field)}
+svg.chart{width:100%;height:auto;display:block}
+.tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:4px}
+table.tbl{width:100%;border-collapse:collapse;font-size:13px;min-width:520px}
+table.tbl th,table.tbl td{padding:9px 7px;border-bottom:1px solid var(--line);text-align:right;
+  font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+table.tbl th{font-family:inherit;font-size:11.5px;color:var(--sub);font-weight:600;letter-spacing:.04em}
+table.tbl td:first-child,table.tbl th:first-child{text-align:left;font-family:inherit}
+table.tbl tr.fx td{color:var(--sub)}
+table.tbl tr.sub td{background:#F7FAFB;border-top:1px solid var(--line)}
+table.tbl tr.tot td{border-bottom:none;background:var(--field);font-weight:600}
+table.tbl .un{display:block;font-size:10px;color:var(--faint);font-weight:400;margin-top:1px}
+.iw input:disabled{background:#EDEFF0;color:var(--faint)}
+table.tbl .seg{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:7px}
+.readout{font-family:var(--mono);font-size:12.5px;color:var(--sub);margin-top:8px;line-height:1.8}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="plate">
+    <div class="plate-top">
+      <div>
+        <div class="eyebrow">道路融雪設備 / 原価・要望価格・設計価格</div>
+        <div class="ttl">損益分岐点シミュレーター</div>
+      </div>
+      <button class="ghost" type="button" id="reset-btn">初期値に戻す</button>
+    </div>
+    <div class="hero">
+      <div class="hero-l"><span class="lamp" id="lamp"></span><span class="vtxt" id="verdict">—</span></div>
+      <div class="hero-n">
+        <div class="hero-lb" id="hero-lb">先方要望価格での粗利</div>
+        <div class="hero-v" id="hero-v">—</div>
+        <div class="hero-sub" id="hero-sub"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="seg" role="tablist" aria-label="計算モード">
+    <button type="button" role="tab" id="tab-full" aria-controls="app-full" aria-selected="true">フルセット</button>
+    <button type="button" role="tab" id="tab-heat" aria-controls="app-heat" aria-selected="false">ヒーター単体</button>
+  </div>
+
+  <div id="warn" hidden></div>
+
+  <!-- ========== FULL ========== -->
+  <div id="app-full" role="tabpanel" aria-labelledby="tab-full">
+
+    <div class="card">
+      <div class="sec"><h2><span class="step">入力 1</span>案件の条件</h2></div>
+      <p class="lede">まず道路の規模を入れます。ここから シート実延長・回路数・盤数 が自動で決まり、下の品目の数量になります。</p>
+      <div id="f-name" style="margin-bottom:12px"></div>
+      <div class="grid g-pri" id="f-proj"></div>
+      <div class="hr" style="margin-top:14px;padding-top:12px"></div>
+      <div class="lede" style="margin-bottom:10px">交差点・取付道路などの<b>横断部</b>を、本線とは別に数量入力できます。</div>
+      <div class="grid g-pri" id="f-cross"></div>
+      <div class="hr" style="margin-top:14px;padding-top:12px"></div>
+      <div class="qline" id="f-derived"></div>
+      <details class="more" id="f-more">
+        <summary><span>設備の前提・固定費・目標を編集</span><span class="sumline" id="f-sumline"></span></summary>
+        <div class="body"><div class="grid g-in" id="f-adv"></div></div>
+      </details>
+    </div>
+
+    <div class="card">
+      <div class="sec"><h2><span class="step">入力 2</span>品目別の単価</h2>
+        <button class="btn sm" type="button" id="f-add">品目を追加</button></div>
+      <p class="lede">品目ごとに<b>原価・先方要望価格・設計価格</b>の3つを入れます。単価は<b>1単位あたり</b>の金額です。シート本体は「シート実延長1mあたり」で入力してください（道路延長1mあたりではありません）。</p>
+      <div id="f-items"></div>
+    </div>
+
+    <div class="sec" style="margin:22px 0 0"><h2><span class="step out">結果</span>損益分岐点</h2></div>
+    <p class="lede" style="margin:6px 0 0">原価・先方要望価格・設計価格の3つから、<b>価格</b>と<b>数量</b>の2方向で分岐点を出します。</p>
+    <div class="grid g-2" id="f-be"></div>
+
+    <div class="card">
+      <div class="sec"><h2><span class="step out">結果</span>本線・横断部の内訳</h2></div>
+      <p class="lede">「数量の決まり方」が<b>横断部延長</b>の品目を横断部として集計します。案件固定費は配賦せず独立行にしているので、各区分は単独の損益として読めます。</p>
+      <div id="f-split"></div>
+      <div class="tip" id="f-split-note"></div>
+    </div>
+
+    <div class="card">
+      <div class="sec"><h2><span class="step out">結果</span>先方要望価格での損益</h2></div>
+      <div id="f-pl"></div>
+    </div>
+
+    <div class="card next" id="f-next"></div>
+
+    <div class="card">
+      <div class="sec"><h2><span class="step out">結果</span>価格をどこまで下げられるか</h2></div>
+      <p class="lede">横軸は設計価格に対する掛率、縦軸は当社粗利です。赤い縦線より左（安い側）が赤字域になります。</p>
+      <div id="f-pchart"></div>
+      <div class="readout" id="f-preadout"></div>
+    </div>
+
+    <div class="card">
+      <div class="sec"><h2><span class="step out">結果</span>延長がどこまで短いと赤字か</h2></div>
+      <p class="lede">先方要望価格のまま、道路延長を変えたときの損益です。オレンジの区間が黒字域です。</p>
+      <div id="f-road"></div>
+      <div class="legend" style="margin-top:20px">
+        <span><i class="sw" style="background:var(--ice);height:2px;width:18px;border-radius:0"></i>先方要望価格</span>
+        <span><i class="sw" style="border-top:2px dashed var(--warn);height:0;width:18px;border-radius:0"></i>設計価格で受注した場合</span>
+        <span><i class="sw" style="border-top:1px solid var(--off);height:0;width:18px;border-radius:0"></i>粗利ゼロ</span>
+      </div>
+      <div id="f-chart" style="margin-top:8px"></div>
+      <div class="readout" id="f-readout"></div>
+      <div class="tip">回路数と盤数は延長に応じて段階的に増えるため、粗利は階段状に動きます。</div>
+    </div>
+  </div>
+
+  <!-- ========== HEAT ========== -->
+  <div id="app-heat" role="tabpanel" aria-labelledby="tab-heat" hidden>
+
+    <div class="card">
+      <div class="sec"><h2><span class="step">入力 1</span>案件の条件</h2></div>
+      <p class="lede">定尺（1巻の長さ）で割り切れないぶんが端材になります。端材を誰が負担するかが、この画面の主題です。</p>
+      <div id="h-name" style="margin-bottom:12px"></div>
+      <div class="grid g-pri" id="h-proj"></div>
+      <details class="more" id="h-more">
+        <summary><span>余長・固定費・目標を編集</span><span class="sumline" id="h-sumline"></span></summary>
+        <div class="body"><div class="grid g-in" id="h-adv"></div></div>
+      </details>
+      <div class="hr" style="margin-top:14px;padding-top:14px"></div>
+      <div id="h-cut"></div>
+    </div>
+
+    <div class="card">
+      <div class="sec"><h2><span class="step">入力 2</span>3つの単価（シート実延長 1mあたり）</h2></div>
+      <p class="lede">原価・先方要望価格・設計価格の3点を入れると、下で分岐点を計算します。</p>
+      <div class="grid g-in" id="h-price"></div>
+    </div>
+
+    <div class="card">
+      <div class="sec"><h2><span class="step">入力 3</span>横断部</h2></div>
+      <p class="lede">交差点・取付道路などの横断部を別枠で入力します。<b>別品目</b>を選ぶと、横断部だけの原価・売価・粗利・損益分岐単価を単独で計算します。</p>
+      <div class="grid g-in" id="h-cross"></div>
+      <div class="hr" style="margin-top:12px;padding-top:12px"></div>
+      <div class="grid g-in" id="h-cross-price"></div>
+      <div class="tip" id="h-cross-note"></div>
+    </div>
+
+    <div class="card">
+      <div class="sec"><h2><span class="step out">結果</span>課金方式による違い</h2></div>
+      <p class="lede">同じ単価でも、何メートルぶん請求するかで損益分岐単価が変わります。行をタップすると、下の計算がその方式に切り替わります。</p>
+      <div id="h-matrix"></div>
+      <div class="note" id="h-advice"></div>
+    </div>
+
+    <div class="sec" style="margin:22px 0 0"><h2><span class="step out">結果</span>損益分岐点</h2></div>
+    <div class="grid g-2" id="h-be"></div>
+
+    <div class="card">
+      <div class="sec"><h2><span class="step out">結果</span>本線・横断部の内訳</h2></div>
+      <p class="lede">案件固定費は配賦せず独立行にしているので、各区分は単独の損益として読めます。</p>
+      <div id="h-split"></div>
+      <div class="tip" id="h-split-note"></div>
+    </div>
+
+    <div class="card">
+      <div class="sec"><h2><span class="step out">結果</span>先方要望価格での損益</h2></div>
+      <div id="h-pl"></div>
+    </div>
+
+    <div class="card next" id="h-next"></div>
+
+    <div class="card">
+      <div class="sec"><h2><span class="step out">結果</span>価格をどこまで下げられるか</h2></div>
+      <p class="lede">横軸は設計価格に対する掛率、縦軸は当社粗利です。赤い縦線より左が赤字域です。</p>
+      <div id="h-pchart"></div>
+      <div class="readout" id="h-preadout"></div>
+    </div>
+
+    <div class="card dashed">
+      <div class="sec"><h2><span class="step out">結果</span>運搬費</h2>
+        <span style="font-size:11px;letter-spacing:.06em;color:var(--sub);background:var(--field);border:1px solid var(--line);padding:3px 9px;border-radius:3px">商品単価には含めない</span>
+      </div>
+      <p class="lede">運搬は商品の粗利とは別勘定です。ただし画面上部の判定には、運搬損益を含めたトータルで反映しています。</p>
+      <div class="grid g-in" id="h-freight"></div>
+      <div class="hr" style="margin-top:12px"></div>
+      <div class="grid g-st" id="h-freight-out"></div>
+    </div>
+
+    <div class="card">
+      <div class="sec"><h2><span class="step out">結果</span><span id="h-curve-title">粗利カーブ</span></h2></div>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--ice);height:2px;width:18px;border-radius:0"></i>先方要望価格</span>
+        <span><i class="sw" style="border-top:2px dashed var(--warn);height:0;width:18px;border-radius:0"></i>設計価格で受注した場合</span>
+        <span><i class="sw" style="border-top:1px solid var(--off);height:0;width:18px;border-radius:0"></i>粗利ゼロ</span>
+      </div>
+      <div id="h-chart" style="margin-top:8px"></div>
+      <div class="readout" id="h-readout"></div>
+      <div class="tip">実延長課金では巻の境目で原価だけが跳ねるため、粗利がのこぎり状になります。巻単位課金にすると段差が消えます。</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="sec"><h2>保存した案件</h2>
+      <span style="display:flex;gap:8px">
+        <button class="btn sm" type="button" id="copy-btn">結果をコピー</button>
+        <button class="btn sm" type="button" id="save-btn">現在の内容を保存</button>
+      </span>
+    </div>
+    <div id="save-note" class="tip" style="margin:0 0 8px"></div>
+    <div id="copy-wrap" hidden><textarea class="copybox" id="copy-area" readonly></textarea></div>
+    <div id="save-list"></div>
+  </div>
+
+  <details class="help">
+    <summary>用語と計算の前提</summary>
+    <div class="body">
+      <dl class="gloss">
+        <dt>3つの入力</dt>
+        <dd><b>原価</b>＝当社の製造・仕入コスト。<b>先方要望価格</b>＝相手先から求められている卸価格。<b>設計価格</b>＝発注者側の設計・積算上の単価。この3つだけで、価格・数量の両面から分岐点を出します。</dd>
+        <dt>損益分岐売上</dt>
+        <dd>粗利がちょうどゼロになる売上。<code>原価（案件固定費込み）</code>と同額です。</dd>
+        <dt>損益分岐の単価水準</dt>
+        <dd><code>原価 ÷ 先方要望価格での売上</code>。先方要望価格を100%としたとき、何%まで下げると粗利ゼロになるかを表します。売上は単価に比例し原価は変わらないため、この比率がそのまま<b>値引き余地</b>になります。</dd>
+        <dt>限界単価</dt>
+        <dd>粗利ゼロとなる単価。品目別では<code>先方要望価格 × 損益分岐の単価水準</code>で、一律に値下げした場合の下限を示します。</dd>
+        <dt>掛率 / 損益分岐掛率</dt>
+        <dd>掛率は<code>当社売上 ÷ 設計価格</code>。損益分岐掛率は<code>原価 ÷ 設計価格の総額</code>で、「設計価格の何%を確保できないと赤字か」を表します。交渉の下限ラインとして使えます。</dd>
+        <dt>安全余裕率（数量）</dt>
+        <dd><code>(本案件の延長 − 損益分岐延長) ÷ 本案件の延長</code>。延長がどれだけ削られても黒字を保てるかの余裕です。</dd>
+        <dt>先方の商流粗利</dt>
+        <dd><code>設計価格 − 当社売上</code>。相手先の取り分です。ここが薄いと値引き要求が出やすくなります。</dd>
+        <dt>粗利率</dt>
+        <dd><code>粗利 ÷ 売上</code>。売上が0のときは計算できないので「—」と表示します。</dd>
+        <dt>横断部</dt>
+        <dd>交差点・取付道路など、本線の轍とは別に敷く区間。<code>箇所数 × 1箇所あたりシート延長</code>で数量を出します。フルセットでは「数量の決まり方」を<b>横断部延長</b>にした品目が横断部として集計され、ヒーター単体では専用の原価・要望価格・設計価格を持てます。回路数・盤数は本線と横断部の合計延長から計算します。</dd>
+        <dt>横断部の手配の考え方</dt>
+        <dd><b>必要長さで手配</b>＝端材なし。<b>定尺の巻で手配</b>＝本線と同じ定尺で別に巻を取るため、短い横断部ほど端材率が跳ね上がります。<b>本線と同一品目</b>＝同じ巻から切り出すので端材は共有され、単価も本線のものを使います。</dd>
+        <dt>区分別の損益分岐単価</dt>
+        <dd>その区分の<code>原価 ÷ 課金数量</code>。内訳表では、区分行と小計（商品）が<b>固定費抜き</b>、合計が<b>固定費込み</b>の値です。案件全体での値引きの最終防衛線には合計の値を使ってください。</dd>
+        <dt>シート実延長</dt>
+        <dd><code>道路延長 × 条数</code>（ヒーター単体では さらに条ごとの端末余長を加算）。実際に敷く長さで、道路延長とは別物です。</dd>
+        <dt>定尺・巻数・端材</dt>
+        <dd>定尺は1巻の長さ。<code>巻数 = 切り上げ(必要延長 ÷ 定尺)</code>、<code>供給延長 = 巻数 × 定尺</code>、<code>端材 = 供給延長 − 必要延長</code>。原価は必ず供給延長ぶん発生します。</dd>
+        <dt>課金方式</dt>
+        <dd>実延長課金＝必要延長ぶんだけ請求（端材は当社負担）。最低請求延長＝短い案件に下限を適用。巻単位課金＝供給延長ぶん請求（端材は先方負担）。</dd>
+        <dt>案件固定費</dt>
+        <dd>延長に関係なく発生する当社負担ぶん（設計費・諸経費など）。運搬費はここに含めず、専用の欄で別に計算します。</dd>
+        <dt>損益分岐延長</dt>
+        <dd>「ここから先はずっと黒字」という道路延長です。巻や回路の段差があるため、一度黒字になってから再び赤字に戻る区間があります。この画面では、その戻りも考慮した安定黒字ラインを表示します。</dd>
+      </dl>
+    </div>
+  </details>
+
+  <div class="tip">入力内容はこのiPad内にのみ保存されます。ホーム画面に追加すると通信なしで単体アプリのように使えます。</div>
+</div>
+
+<script>
+"use strict";
+var K_STATE="yuki-pl-state-v1", K_CASES="yuki-pl-cases-v1";
+function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,v);return true}catch(e){return false}}
+function lsDel(k){try{localStorage.removeItem(k);return true}catch(e){return false}}
+
+/* ---------- number helpers ---------- */
+function toHalf(v){
+  return String(v==null?"":v)
+    .replace(/[\uFF01-\uFF5E]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-0xFEE0)})
+    .replace(/\u3000/g," ").replace(/[\u30FC\u2212\u2010-\u2015]/g,"-");
+}
+function num(v){var x=parseFloat(toHalf(v).replace(/[,\s\u5186%]/g,""));return isFinite(x)?x:0}
+function isBlank(v){return toHalf(v).replace(/[,\s]/g,"")===""}
+function isBadNum(v){if(isBlank(v))return false;
+  var t=toHalf(v).replace(/[,\s\u5186%]/g,"");return !isFinite(parseFloat(t))||!/^-?\d*\.?\d*$/.test(t)}
+function yen(v){if(!isFinite(v))return "—";return (v<0?"-":"")+"\u00A5"+Math.round(Math.abs(v)).toLocaleString("ja-JP")}
+function man(v){
+  if(!isFinite(v))return "";
+  var a=Math.abs(v),sg=v<0?"-":"";
+  if(a<10000)return "";
+  if(a>=1e8)return sg+(Math.round(a/1e6)/100).toLocaleString("ja-JP")+"\u5104\u5186";
+  var m=a/10000;
+  return sg+(m>=100?Math.round(m).toLocaleString("ja-JP"):(Math.round(m*10)/10).toLocaleString("ja-JP"))+"\u4E07\u5186"}
+function manP(v){var m=man(v);return m?"\uFF08"+m+"\uFF09":""}
+function pct(v){return (v==null||!isFinite(v))?"—":(v*100).toFixed(1)+"%"}
+function mstr(v){return Math.round(v).toLocaleString("ja-JP")+"m"}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function $(id){return document.getElementById(id)}
+function ok(g,tg){return g!=null&&isFinite(g)&&g>=tg}
+
+var DRIVERS=[{k:"sheet",l:"本線シート実延長",u:"m"},{k:"cross",l:"横断部延長",u:"m"},
+             {k:"circuit",l:"回路数",u:"回路"},
+             {k:"panel",l:"盤数",u:"面"},{k:"fixed",l:"手入力",u:"式"}];
+/* 横断部の手配の考え方（ヒーター単体タブ） */
+var CMODES=[{k:"cut",l:"別品目・必要長さで手配（端材なし）"},
+            {k:"roll",l:"別品目・定尺の巻で手配"},
+            {k:"merge",l:"本線と同一品目（同じ巻から切出）"}];
+var METHODS=[{k:"actual",l:"実延長課金",d:"必要延長ぶんだけ請求。端材は当社負担"},
+             {k:"min",l:"実延長＋最低請求延長",d:"短延長案件のみ下限を適用"},
+             {k:"roll",l:"巻単位課金",d:"供給延長ぶん請求。端材は先方負担"}];
+var FMODES=[{k:"actual",l:"実費請求"},{k:"flat",l:"定額請求"},{k:"ours",l:"当社負担"}];
+function drv(k){return DRIVERS.filter(function(x){return x.k===k})[0]||{l:"",u:""}}
+function mth(k){return METHODS.filter(function(x){return x.k===k})[0]||{l:"",d:""}}
+
+var DEF={
+  tab:"full",
+  full:{name:"国道◯◯号 融雪工事",roadLen:"200",lines:"2",crossCount:"2",crossEach:"8",
+        circuitMax:"100",circuitsPerPanel:"6",fixedCost:"350000",targetGpr:"28",
+        rows:[{id:1,name:"シート本体",driver:"sheet",qty:"1",cost:"4200",req:"6000",design:"9500"},
+              {id:2,name:"端末・接続キット",driver:"circuit",qty:"1",cost:"38000",req:"55000",design:"86000"},
+              {id:3,name:"電源・制御盤",driver:"panel",qty:"1",cost:"480000",req:"660000",design:"980000"},
+              {id:4,name:"横断部シート",driver:"cross",qty:"1",cost:"5200",req:"7400",design:"11500"}]},
+  heat:{name:"◯◯県道 融雪ヒーター供給",roadLen:"200",lines:"2",extra:"6",rollLen:"50",minBill:"100",
+        crossCount:"2",crossEach:"8",crossMode:"cut",crossCost:"5200",crossReq:"7400",crossDesign:"11500",
+        fixedCost:"80000",targetGpr:"30",cost:"4200",req:"6000",design:"9500",
+        method:"actual",freightPerTrip:"48000",rollsPerTrip:"8",freightMode:"actual",freightFlat:"50000"}
+};
+function clone(o){return JSON.parse(JSON.stringify(o))}
+/* 旧スキーマ（横断部フィールドなし）を新形式へ。
+   旧データに横断部の概念は無い＝横断部0として引き継ぐ（既定値の2箇所を勝手に足さない） */
+function migTab(tab,src){
+  var base=clone(DEF[tab]);
+  if(!src||typeof src!=="object")return base;
+  if(!("crossCount" in src)){base.crossCount="0"}
+  for(var k in src)base[k]=src[k];
+  if(tab==="full"&&(!base.rows||!base.rows.length))base.rows=clone(DEF.full.rows);
+  return base}
+var S=clone(DEF);
+(function(){var raw=lsGet(K_STATE);if(!raw)return;
+  try{var o=JSON.parse(raw);
+    if(o&&o.full)S.full=migTab("full",o.full);
+    if(o&&o.heat)S.heat=migTab("heat",o.heat);
+    if(o&&o.tab)S.tab=o.tab;
+  }catch(e){S=clone(DEF)}})();
+
+/* ---------- calc: full ---------- */
+function fQty(L,p){
+  var ln=Math.max(0,num(p.lines)), sheet=Math.max(0,L)*ln;
+  var cross=Math.max(0,num(p.crossCount)*num(p.crossEach));
+  var tot=sheet+cross;   /* 回路・盤は本線＋横断部の合計延長で決まる */
+  var cm=num(p.circuitMax), circuit=(cm>0&&tot>0)?Math.ceil(tot/cm):0;
+  var cpp=num(p.circuitsPerPanel), panel=(cpp>0&&circuit>0)?Math.ceil(circuit/cpp):0;
+  return{sheet:sheet,cross:cross,total:tot,circuit:circuit,panel:panel}}
+function qtyOf(r,q){if(r.driver==="sheet")return q.sheet;if(r.driver==="cross")return q.cross;
+  if(r.driver==="circuit")return q.circuit;
+  if(r.driver==="panel")return q.panel;return num(r.qty)}
+/* 区分別（本線・共通／横断部）の小計 */
+function fSplit(rows,q,key){
+  var g={sheet:{cost:0,rev:0,n:0},cross:{cost:0,rev:0,n:0},other:{cost:0,rev:0,n:0}};
+  for(var i=0;i<rows.length;i++){var r=rows[i],u=qtyOf(r,q),
+    t=(r.driver==="sheet")?"sheet":((r.driver==="cross")?"cross":"other");
+    g[t].cost+=num(r.cost)*u;g[t].rev+=num(r[key])*u;g[t].n++}
+  return g}
+function fTot(rows,q,key,fixed){
+  var rev=0,cost=0,design=0;
+  for(var i=0;i<rows.length;i++){var r=rows[i],u=qtyOf(r,q);
+    rev+=num(r[key])*u;cost+=num(r.cost)*u;design+=num(r.design)*u}
+  cost+=fixed;var gp=rev-cost;
+  return{rev:rev,cost:cost,gp:gp,gpr:rev>0?gp/rev:null,design:design,
+    partnerGp:design-rev,partnerGpr:design>0?(design-rev)/design:null,rate:design>0?rev/design:null}}
+
+/* ---------- calc: heat ---------- */
+/* 1区分（本線 or 横断部）の切り出しと損益。roll=0 なら必要長さ手配＝端材なし */
+function segCalc(need,uCost,uPrice,roll,method,minBill){
+  var rolls=(roll>0&&need>0)?Math.ceil(need/roll):0;
+  var supply=roll>0?rolls*roll:need, loss=supply-need;
+  var bill=method==="roll"?supply:(method==="min"?Math.max(need,minBill):need);
+  var rev=uPrice*bill, cost=uCost*supply;
+  return{need:need,rolls:rolls,supply:supply,loss:loss,bill:bill,rev:rev,cost:cost,
+    gp:rev-cost,gpr:rev>0?(rev-cost)/rev:null,beU:bill>0?cost/bill:null}}
+function hCrossKey(key){return key==="cost"?"crossCost":(key==="design"?"crossDesign":"crossReq")}
+
+function hCalc(L,s,key,method){
+  var ln=Math.max(0,num(s.lines)), roll=num(s.rollLen);
+  var mainNeed=Math.max(0,(Math.max(0,L)+num(s.extra))*ln);
+  var crossNeed=Math.max(0,num(s.crossCount)*num(s.crossEach));
+  var mode=s.crossMode||"cut", merged=(mode==="merge"), M, C;
+  if(crossNeed<=0||merged){
+    /* 同一品目：合算して巻取りし、必要長さの比で按分して内訳を出す */
+    var T=segCalc(mainNeed+crossNeed,num(s.cost),num(s[key]),roll,method,num(s.minBill));
+    var sh=(mainNeed+crossNeed)>0?crossNeed/(mainNeed+crossNeed):0;
+    C={need:crossNeed,rolls:0,supply:T.supply*sh,loss:T.loss*sh,bill:T.bill*sh,
+       rev:T.rev*sh,cost:T.cost*sh};
+    M={need:mainNeed,rolls:T.rolls,supply:T.supply-C.supply,loss:T.loss-C.loss,bill:T.bill-C.bill,
+       rev:T.rev-C.rev,cost:T.cost-C.cost};
+    [M,C].forEach(function(x){x.gp=x.rev-x.cost;x.gpr=x.rev>0?x.gp/x.rev:null;
+      x.beU=x.bill>0?x.cost/x.bill:null});
+  }else{
+    M=segCalc(mainNeed,num(s.cost),num(s[key]),roll,method,num(s.minBill));
+    /* 横断部に最低請求延長は適用しない */
+    C=segCalc(crossNeed,num(s.crossCost),num(s[hCrossKey(key)]),
+              mode==="roll"?roll:0,method,0);
+  }
+  var need=M.need+C.need, supply=M.supply+C.supply, loss=M.loss+C.loss;
+  var bill=M.bill+C.bill, rolls=M.rolls+C.rolls;
+  var rev=M.rev+C.rev, cost=M.cost+C.cost+num(s.fixedCost), gp=rev-cost;
+  var pRev=num(s.design)*mainNeed+(merged?num(s.design):num(s.crossDesign))*crossNeed;
+  return{main:M,cross:C,crossOn:crossNeed>0,merged:merged,mode:mode,
+    need:need,rolls:rolls,supply:supply,loss:loss,lossRate:supply>0?loss/supply:0,
+    bill:bill,rev:rev,cost:cost,gp:gp,gpr:rev>0?gp/rev:null,partnerRev:pRev,
+    partnerGp:pRev-rev,partnerGpr:pRev>0?(pRev-rev)/pRev:null,rate:pRev>0?rev/pRev:null}}
+function hFreight(supplyLen,s){
+  var cap=num(s.rollsPerTrip)*num(s.rollLen);   /* 1便あたり積載を延長換算 */
+  var trips=(cap>0&&supplyLen>0)?Math.ceil(supplyLen/cap):0;
+  var cost=trips*num(s.freightPerTrip);
+  var bill=s.freightMode==="actual"?cost:(s.freightMode==="flat"?num(s.freightFlat):0);
+  return{trips:trips,cost:cost,bill:bill,gp:bill-cost}}
+
+/* ---------- break-even ----------
+   「ここから先はずっと黒字」（be）「最初に黒字化」（bf）「ここから先はずっと目標達成」（beT）を
+   1回の走査でまとめて求める。段差（巻・回路・盤）があるため単純な二分探索は使えない。 */
+function beScanAll(evalAt,maxL,tg){
+  var lastNeg=0,lastLow=0,first=null;
+  for(var L=1;L<=maxL;L++){
+    var e=evalAt(L);
+    if(e.gp<0)lastNeg=L;
+    if(!(e.gpr!=null&&isFinite(e.gpr)&&e.gpr>=tg))lastLow=L;
+    if(first==null&&e.gp>=0)first=L}
+  function fin(x){return x>=maxL?null:(x===0?1:x+1)}
+  return{be:fin(lastNeg),bf:first,beT:fin(lastLow)}}
+
+/* ---------- 境界走査 ----------
+   巻・回路・盤の段差の間では gp と rev が L の一次式になる。
+   そこで「段差の直後」を境界として区間ごとに端点2つだけ評価し、
+   区間内のゼロ交差は一次式で解く。総当たり（beScanAll）と同一の
+   整数グリッド上の答えを返すことをテストで担保している。 */
+function beScanFast(evalAt,maxL,tg,bounds){
+  if(!bounds)return beScanAll(evalAt,maxL,tg);
+  var starts=[1],i;
+  for(i=0;i<bounds.length;i++){var b=Math.round(bounds[i]);
+    if(b>=2&&b<=maxL&&b!==starts[starts.length-1])starts.push(b)}
+  starts.sort(function(a,b){return a-b});
+  var lastNeg=0,lastLow=0,first=null,EPS=1e-7;
+  function lastBelow(a,b,va,vb){        /* v<0 となる最大の整数L（なければ -1） */
+    if(va>=-EPS&&vb>=-EPS)return -1;
+    if(vb<-EPS)return b;
+    var r=a+(0-va)*(b-a)/(vb-va);       /* va<0<=vb */
+    var L=Math.min(b,Math.max(a,Math.ceil(r-EPS)-1));
+    return (va+(vb-va)*(L-a)/(b-a)<-EPS)?L:(L>a?L:-1)}
+  function firstAtLeast(a,b,va,vb){     /* v>=0 となる最小の整数L（なければ -1） */
+    if(va>=-EPS)return a;
+    if(vb<-EPS)return -1;
+    var r=a+(0-va)*(b-a)/(vb-va);
+    var L=Math.min(b,Math.max(a,Math.ceil(r-EPS)));
+    return L}
+  for(i=0;i<starts.length;i++){
+    var a=starts[i],b=(i+1<starts.length?starts[i+1]-1:maxL);
+    if(b<a)continue;
+    var ea=evalAt(a),eb=(b>a)?evalAt(b):ea;
+    var ha=ea.gp-tg*ea.rev, hb=eb.gp-tg*eb.rev;      /* 目標粗利率条件を一次式に */
+    if(ea.rev<=0)ha=-1;if(eb.rev<=0)hb=-1;           /* 売上0は常に未達扱い */
+    var ln1=lastBelow(a,b,ea.gp,eb.gp);if(ln1>lastNeg)lastNeg=ln1;
+    var ll=lastBelow(a,b,ha,hb);if(ll>lastLow)lastLow=ll;
+    if(first==null){var fz=firstAtLeast(a,b,ea.gp,eb.gp);if(fz>=0)first=fz}}
+  function fin(x){return x>=maxL?null:(x<=0?1:x+1)}
+  return{be:fin(lastNeg),bf:first,beT:fin(lastLow)}}
+
+/* 段差が起きる最初の道路延長Lの一覧 */
+function hBounds(s,maxL){
+  var ln=Math.max(0,num(s.lines)),roll=num(s.rollLen),extra=num(s.extra);
+  if(ln<=0)return null;
+  var merged=(s.crossMode||"cut")==="merge";
+  var base=merged?Math.max(0,num(s.crossCount)*num(s.crossEach)):0;
+  var pts=[],k;
+  if(roll>0){for(k=1;k<=20000;k++){
+    var Lb=Math.floor((k*roll-base)/ln-extra)+1;
+    if(Lb>maxL)break;if(Lb>=2)pts.push(Lb)}}
+  if(s.method==="min"&&num(s.minBill)>0){
+    var Lm=Math.ceil(num(s.minBill)/ln-extra+ (base>0?-base/ln:0));
+    /* 課金対象の必要延長が最低請求に達する点。mergeでは合算needが対象 */
+    Lm=Math.ceil((num(s.minBill)-base)/ln-extra);
+    if(Lm>=2&&Lm<=maxL)pts.push(Lm)}
+  return pts}
+function fBounds(p,maxL){
+  var ln=Math.max(0,num(p.lines)),cm=num(p.circuitMax);
+  if(ln<=0)return null;
+  var cross=Math.max(0,num(p.crossCount)*num(p.crossEach));
+  var pts=[],k;
+  if(cm>0){for(k=1;k<=20000;k++){
+    var Lb=Math.floor((k*cm-cross)/ln)+1;
+    if(Lb>maxL)break;if(Lb>=2)pts.push(Lb)}}
+  return pts}
+
+/* 延長→∞での粗利率の理論上限。目標到達が「レンジ外」なのか「原理的に不可能」なのかを区別する */
+function gprLimFull(p){
+  var ln=Math.max(0,num(p.lines)),cm=num(p.circuitMax),cpp=num(p.circuitsPerPanel);
+  var rr=0,cc=0;
+  for(var i=0;i<p.rows.length;i++){var r=p.rows[i],rt=0;
+    if(r.driver==="sheet")rt=ln;
+    else if(r.driver==="circuit")rt=cm>0?ln/cm:0;
+    else if(r.driver==="panel")rt=(cm>0&&cpp>0)?ln/(cm*cpp):0;
+    if(rt<=0)continue;
+    rr+=num(r.req)*rt;cc+=num(r.cost)*rt}
+  return rr>0?1-cc/rr:null}
+function gprLimHeat(s){var r=num(s.req);return r>0?1-num(s.cost)/r:null}
+
+/* ---------- 価格軸の損益分岐 ----------
+   売上は単価に比例し、原価は単価に依存しない。よって
+   粗利ゼロとなる単価水準は 原価 ÷ 現行売上 で解析的に求まる。
+   rev    : 先方要望価格での売上
+   cost   : 原価（案件固定費込み）
+   dsg    : 設計価格の総額（＝ 掛率 100% で受注した場合の売上）
+   tg     : 目標粗利率 */
+function bePrice(rev,cost,dsg,tg){
+  var k   = rev>0 ? cost/rev : null;               /* 損益分岐単価倍率（要望価格＝1.0） */
+  var kT  = rev>0 ? (cost/(1-tg))/rev : null;      /* 目標粗利率を満たす単価倍率 */
+  return{
+    rev:rev, cost:cost, dsg:dsg,
+    k:k, kT:kT,
+    room:  k!=null ? 1-k : null,                   /* 値引き余地（負なら不足） */
+    roomY: k!=null ? rev-cost : null,              /* 同 金額 */
+    needY: Math.max(0,cost/(1-tg)-rev),
+    beRev: cost,                                   /* 損益分岐売上 */
+    tgRev: cost/(1-tg),
+    beRate:  dsg>0 ? cost/dsg : null,              /* 損益分岐掛率 */
+    nowRate: dsg>0 ? rev/dsg  : null,
+    tgRate:  dsg>0 ? (cost/(1-tg))/dsg : null}}
+
+/* ---------- ui helpers ---------- */
+function fieldHTML(key,label,unit,val,cls){
+  return '<label class="f"><span class="lb">'+esc(label)+'</span><span class="iw">'+
+    '<input data-k="'+key+'" class="'+(cls||"")+'" '+(cls==="txt"?'type="text"':'inputmode="decimal"')+
+    ' value="'+esc(val)+'">'+(unit?'<span class="u">'+esc(unit)+'</span>':'')+'</span></label>'}
+function statHTML(l,v,tone,big,sub){
+  return '<div class="stat'+(big?" big":"")+'"><div class="l">'+esc(l)+'</div>'+
+    '<div class="v"'+(tone?' style="color:'+tone+'"':'')+'>'+esc(v)+'</div>'+
+    (sub?'<div class="s">'+esc(sub)+'</div>':'')+'</div>'}
+function axisMaxOf(L){var raw=Math.max(L*2.5,300);var st=raw>2000?500:(raw>800?200:50);return Math.ceil(raw/st)*st}
+
+function unitOf(hi,lo){
+  var m=Math.max(Math.abs(hi),Math.abs(lo));
+  if(m>=1e7)return{d:1e4,s:"万円"};
+  if(m>=1e5)return{d:1e3,s:"千円"};
+  return{d:1,s:"円"}}
+function axLab(v,u){var x=v/u.d,r=Math.abs(x)>=100?Math.round(x):Math.round(x*10)/10;return r.toLocaleString("ja-JP")}
+
+function buildPts(ax,bounds,f){
+  var xs=[],i;
+  for(i=0;i<=90;i++)xs.push(ax/90*i);
+  for(i=0;i<bounds.length&&i<60;i++){var b=bounds[i];
+    if(b>0.02&&b<ax){xs.push(b-0.01);xs.push(b+0.01)}}
+  xs.sort(function(a,b){return a-b});
+  var pts=[];for(i=0;i<xs.length;i++)pts.push(f(xs[i]));
+  return pts}
+
+function chartSVG(pts,axisMax,curL){
+  var W=640,H=272,ml=58,mr=18,mt=12,mb=48,i;
+  var lo=0,hi=0;
+  for(i=0;i<pts.length;i++){lo=Math.min(lo,pts[i].a,pts[i].b);hi=Math.max(hi,pts[i].a,pts[i].b)}
+  if(hi===lo)hi=lo+1;
+  var pad=(hi-lo)*0.1;lo-=pad;hi+=pad;
+  var u=unitOf(hi,lo);
+  var X=function(v){return ml+(v/axisMax)*(W-ml-mr)};
+  var Y=function(v){return mt+(1-(v-lo)/(hi-lo))*(H-mt-mb)};
+  var g="",t,k;
+  for(k=0;k<=4;k++){t=lo+(hi-lo)*k/4;
+    g+='<line x1="'+ml+'" y1="'+Y(t).toFixed(1)+'" x2="'+(W-mr)+'" y2="'+Y(t).toFixed(1)+'" stroke="#E7ECEE"/>'+
+       '<text x="'+(ml-8)+'" y="'+(Y(t)+4).toFixed(1)+'" text-anchor="end" font-size="11" fill="#8899A1" font-family="ui-monospace,monospace">'+
+       axLab(t,u)+'</text>'}
+  for(k=0;k<=4;k++){var xv=axisMax*k/4;
+    g+='<text x="'+X(xv).toFixed(1)+'" y="'+(H-26)+'" text-anchor="middle" font-size="11" fill="#8899A1" font-family="ui-monospace,monospace">'+Math.round(xv)+'</text>'}
+  function poly(key){var d="";for(i=0;i<pts.length;i++){d+=(i?" ":"")+X(pts[i].L).toFixed(1)+","+Y(pts[i][key]).toFixed(1)}return d}
+  var zero=(lo<=0&&hi>=0)?'<line x1="'+ml+'" y1="'+Y(0).toFixed(1)+'" x2="'+(W-mr)+'" y2="'+Y(0).toFixed(1)+'" stroke="#AF2A1F" stroke-width="1"/>':"";
+  var cur="";
+  if(curL<=axisMax&&curL>=0){
+    cur='<line x1="'+X(curL).toFixed(1)+'" y1="'+mt+'" x2="'+X(curL).toFixed(1)+'" y2="'+(H-mb)+'" stroke="#11181C" stroke-dasharray="2 3"/>'+
+        '<text x="'+X(curL).toFixed(1)+'" y="'+(mt+11)+'" text-anchor="'+(curL/axisMax>0.8?"end":"start")+'" font-size="10" fill="#11181C" '+
+        'font-family="ui-monospace,monospace" dx="'+(curL/axisMax>0.8?-4:4)+'">本案件</text>'}
+  return '<svg class="chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="道路延長に対する粗利の推移。実線が当社卸値案、破線が先方要望額、赤い横線が粗利ゼロ。">'+
+    g+zero+cur+
+    '<polyline fill="none" stroke="#1F5F86" stroke-width="2" points="'+poly("a")+'"/>'+
+    '<polyline fill="none" stroke="#8A5608" stroke-width="2" stroke-dasharray="6 4" points="'+poly("b")+'"/>'+
+    '<text x="'+((ml+W-mr)/2)+'" y="'+(H-6)+'" text-anchor="middle" font-size="11" fill="#8899A1">道路延長 (m)</text>'+
+    '<text x="4" y="'+(mt+10)+'" font-size="11" fill="#8899A1">'+u.s+'</text></svg>'}
+
+function roadHTML(be,L,ax,msg){
+  var bp=be==null?1:Math.max(0,Math.min(1,be/ax)), cp=Math.max(0,Math.min(1,L/ax));
+  var lit=be!=null&&L>=be, right=cp>0.72;
+  var ruts=[30,60].map(function(y){return '<div class="rut" style="top:'+y+'%"></div>'+
+    (be!=null?'<div class="rut hot" style="top:'+y+'%;left:'+(bp*100)+'%;right:0"></div>':"")}).join("");
+  var labs="";
+  if(be!=null&&bp>0.14)labs+='<div class="zlab" style="left:8px">赤字域</div>';
+  if(be!=null&&bp<0.82)labs+='<div class="zlab" style="right:8px">黒字域</div>';
+  else if(be==null)labs+='<div class="zlab" style="left:8px">全域が赤字域</div>';
+  return '<div class="road"><div class="warmzone" style="left:'+(bp*100)+'%"></div>'+ruts+labs+
+    (be!=null&&be>0?'<div class="bemark" style="left:'+(bp*100)+'%"></div>':"")+
+    '<div class="cur" style="left:'+(cp*100)+'%"></div>'+
+    '<div class="chip" style="left:'+(cp*100)+'%;'+(right?"transform:translateX(-100%);margin-left:-7px;":"margin-left:7px;")+
+      'background:'+(lit?"var(--rutHot)":"#4C5C65")+';color:'+(lit?"#221704":"#EAF0F2")+'">本案件 '+Math.round(L)+'m</div></div>'+
+    '<div class="ticks">'+[0,1,2,3,4].map(function(i){return "<span>"+Math.round(ax*i/4)+"m</span>"}).join("")+'</div>'+
+    '<div class="tip" style="color:var(--sub);font-size:13px">'+msg+'</div>'}
+
+/* --- 価格軸の分岐点カード --- */
+function bePriceCardHTML(bp,tg,tgPctLabel,limitLines){
+  var safe=bp.k!=null&&bp.k<1;
+  var c=safe?"var(--ice)":"var(--off)", sb=safe?"var(--iceSoft)":"var(--offSoft)";
+  var head=bp.k==null?"—":pct(bp.k);
+  var roomTxt=bp.room==null?"先方要望価格を入力してください"
+    :(bp.room>=0?"あと "+pct(bp.room)+"（"+yen(bp.roomY)+"）下げられます"
+                :"すでに "+pct(-bp.room)+"（"+yen(-bp.roomY)+"）割り込んでいます");
+  return '<div class="card" style="margin-top:0;border-top:3px solid '+c+'">'+
+    '<span style="display:inline-block;font-size:11px;letter-spacing:.07em;color:'+c+';background:'+sb+
+      ';padding:3px 9px;border-radius:3px;margin-bottom:4px">損益分岐 — 価格</span>'+
+    statHTML("損益分岐の単価水準（先方要望価格＝100%）",head,safe?null:"var(--off)",true,roomTxt)+
+    '<div class="hr"></div><div class="grid" style="grid-template-columns:1fr 1fr;gap:2px">'+
+    statHTML("損益分岐売上（＝原価）",yen(bp.beRev))+
+    statHTML("目標粗利率に必要な売上",yen(bp.tgRev),null,false,tgPctLabel)+
+    statHTML("損益分岐掛率（設計価格比）",pct(bp.beRate),bp.beRate!=null?"var(--off)":null,false,
+      bp.beRate!=null?"これを下回ると赤字":"")+
+    statHTML("現在の掛率（要望価格）",pct(bp.nowRate),
+      (bp.nowRate!=null&&bp.beRate!=null&&bp.nowRate>=bp.beRate)?"var(--on)":"var(--off)")+
+    statHTML("目標粗利率を満たす掛率",pct(bp.tgRate))+
+    statHTML("要望価格に上乗せが必要な額",yen(bp.needY),bp.needY>0?"var(--warn)":"var(--on)",false,
+      bp.needY>0?man(bp.needY):"上乗せ不要")+
+    '</div>'+(limitLines?'<div class="hr" style="margin-top:8px;padding-top:10px"></div>'+
+      '<div class="tip" style="color:var(--sub);font-size:12.5px;margin-top:0">'+limitLines+'</div>':"")+
+    '</div>'}
+
+/* --- 数量軸の分岐点カード --- */
+function beQtyCardHTML(be,bf,beT,L,unitL,tgPctLabel,beNote,beTNote){
+  var safe=be!=null&&L>=be;
+  var c=safe?"var(--ice)":"var(--off)", sb=safe?"var(--iceSoft)":"var(--offSoft)";
+  var mos=(be!=null&&L>0)?(L-be)/L:null;
+  return '<div class="card" style="margin-top:0;border-top:3px solid '+c+'">'+
+    '<span style="display:inline-block;font-size:11px;letter-spacing:.07em;color:'+c+';background:'+sb+
+      ';padding:3px 9px;border-radius:3px;margin-bottom:4px">損益分岐 — 数量</span>'+
+    statHTML("損益分岐"+unitL,be==null?"—":(be<=1?"下限なし":mstr(be)),safe?null:"var(--off)",true,
+      be==null?(beNote||"表示レンジ内に黒字域がありません"):(be<=1?"全域で黒字":"これ未満は赤字域"))+
+    '<div class="hr"></div><div class="grid" style="grid-template-columns:1fr 1fr;gap:2px">'+
+    statHTML("本案件の"+unitL,mstr(L))+
+    statHTML("安全余裕率（数量）",mos==null?"—":pct(mos),
+      (mos!=null&&mos<0)?"var(--off)":((mos!=null&&mos<0.2)?"var(--warn)":"var(--on)"),false,
+      mos==null?"":(mos>=0?"ここまで短くなっても黒字":"分岐点に届いていません"))+
+    statHTML("最初に黒字化する"+unitL,bf==null?"—":mstr(bf),null,false,
+      (bf!=null&&be!=null&&bf<be)?"段差でいったん赤字に戻ります":"")+
+    statHTML("目標粗利率を満たす"+unitL,beT==null?"—":(beT<=1?"下限なし":mstr(beT)),null,false,
+      beT==null?(beTNote||"表示レンジ内では未到達"):tgPctLabel)+
+    '</div></div>'}
+
+/* --- 区分別（本線／横断部）の内訳テーブル --- */
+function splitTableHTML(segs){
+  var h='<div class="tblwrap"><table class="tbl"><thead><tr>'+
+    '<th>区分</th><th>数量</th><th>原価</th><th>売価（要望）</th><th>粗利</th><th>粗利率</th><th>損益分岐単価</th>'+
+    '</tr></thead><tbody>';
+  for(var i=0;i<segs.length;i++){var g=segs[i];
+    var gp=g.rev-g.cost, gpr=g.rev>0?gp/g.rev:null;
+    h+='<tr class="'+(g.cls||"")+'"><td>'+(g.color?'<i class="seg" style="background:'+g.color+'"></i>':"")+
+      esc(g.n)+'</td><td>'+esc(g.q||"—")+'</td><td>'+yen(g.cost)+'</td><td>'+yen(g.rev)+'</td>'+
+      '<td style="color:'+(gp<0?"var(--off)":"var(--ink)")+'">'+yen(gp)+'</td>'+
+      '<td>'+(g.rev>0?pct(gpr):"—")+'</td>'+
+      '<td>'+(g.u>0?yen(g.cost/g.u)+" /m"+(g.un?'<span class="un">'+esc(g.un)+'</span>':""):"—")+'</td></tr>'}
+  return h+'</tbody></table></div>'}
+
+/* --- 損益の内訳カード --- */
+function plCardHTML(B,tg,costLabel){
+  return '<div class="grid g-st">'+
+    statHTML("当社粗利（先方要望価格）",yen(B.gp),B.gp<0?"var(--off)":"var(--on)",true,man(B.gp))+
+    statHTML("売上",yen(B.rev))+
+    statHTML(costLabel,yen(B.cost))+
+    statHTML("粗利率",pct(B.gpr),ok(B.gpr,tg)?"var(--on)":"var(--warn)")+
+    '</div><div class="hr" style="margin-top:8px;padding-top:10px"></div><div class="grid g-st">'+
+    statHTML("設計価格の総額",yen(B.design))+
+    statHTML("先方の商流粗利",yen(B.partnerGp),B.partnerGp<0?"var(--off)":null)+
+    statHTML("同 粗利率",pct(B.partnerGpr))+
+    statHTML("設計価格に対する掛率",pct(B.rate))+
+    '</div>'}
+
+/* --- 価格を横軸にした損益分岐グラフ --- */
+function priceChartSVG(baseRev,cost,nowX,beX,tgX,xLab){
+  var W=640,H=250,ml=58,mr=18,mt=14,mb=50,i;
+  if(!(baseRev>0))return '<div class="tip">設計価格または要望価格を入力すると、価格軸の分岐点グラフが出ます。</div>';
+  var xmax=Math.max(1.05,(nowX||0)*1.3,(beX||0)*1.2,(tgX||0)*1.15);
+  var lo=Math.min(0,-cost),hi=xmax*baseRev-cost;
+  if(hi===lo)hi=lo+1;
+  var pad=(hi-lo)*0.1;lo-=pad;hi+=pad;
+  var u=unitOf(hi,lo);
+  var X=function(v){return ml+(v/xmax)*(W-ml-mr)};
+  var Y=function(v){return mt+(1-(v-lo)/(hi-lo))*(H-mt-mb)};
+  var g="",k,t;
+  for(k=0;k<=4;k++){t=lo+(hi-lo)*k/4;
+    g+='<line x1="'+ml+'" y1="'+Y(t).toFixed(1)+'" x2="'+(W-mr)+'" y2="'+Y(t).toFixed(1)+'" stroke="#E7ECEE"/>'+
+       '<text x="'+(ml-8)+'" y="'+(Y(t)+4).toFixed(1)+'" text-anchor="end" font-size="11" fill="#8899A1" font-family="ui-monospace,monospace">'+
+       axLab(t,u)+'</text>'}
+  for(k=0;k<=4;k++){var xv=xmax*k/4;
+    g+='<text x="'+X(xv).toFixed(1)+'" y="'+(H-26)+'" text-anchor="middle" font-size="11" fill="#8899A1" font-family="ui-monospace,monospace">'+
+       Math.round(xv*100)+'%</text>'}
+  var zero='<line x1="'+ml+'" y1="'+Y(0).toFixed(1)+'" x2="'+(W-mr)+'" y2="'+Y(0).toFixed(1)+'" stroke="#AF2A1F" stroke-width="1"/>';
+  function mark(x,col,lab,dy){
+    if(x==null||!isFinite(x)||x<0||x>xmax)return "";
+    var an=(x/xmax>0.78)?"end":"start", dx=(x/xmax>0.78)?-4:4;
+    return '<line x1="'+X(x).toFixed(1)+'" y1="'+mt+'" x2="'+X(x).toFixed(1)+'" y2="'+(H-mb)+'" stroke="'+col+'" stroke-dasharray="2 3"/>'+
+      '<text x="'+X(x).toFixed(1)+'" y="'+(mt+dy)+'" text-anchor="'+an+'" dx="'+dx+'" font-size="10" fill="'+col+
+      '" font-family="ui-monospace,monospace">'+lab+'</text>'}
+  var line='<line x1="'+X(0).toFixed(1)+'" y1="'+Y(-cost).toFixed(1)+'" x2="'+X(xmax).toFixed(1)+'" y2="'+
+    Y(xmax*baseRev-cost).toFixed(1)+'" stroke="#1F5F86" stroke-width="2"/>';
+  return '<svg class="chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="価格水準に対する粗利の推移。赤い横線が粗利ゼロ、縦線が損益分岐点と現在の価格。">'+
+    g+zero+line+
+    mark(beX,"#AF2A1F","損益分岐",12)+mark(tgX,"#8A5608","目標粗利率",26)+mark(nowX,"#11181C","要望価格",40)+
+    '<text x="'+((ml+W-mr)/2)+'" y="'+(H-6)+'" text-anchor="middle" font-size="11" fill="#8899A1">'+esc(xLab)+'</text>'+
+    '<text x="4" y="'+(mt+10)+'" font-size="11" fill="#8899A1">'+u.s+'</text></svg>'}
+
+/* ---------- input validation ---------- */
+var VAL={
+  full:[{k:"roadLen",l:"道路延長",min:1},{k:"lines",l:"条数（轍）",min:1},
+        {k:"crossCount",l:"横断部 箇所数",min:0},{k:"crossEach",l:"横断部 1箇所あたり延長",min:0},
+        {k:"circuitMax",l:"1回路の上限延長",min:1},{k:"circuitsPerPanel",l:"1面あたり収容回路",min:1},
+        {k:"fixedCost",l:"案件固定費",min:0},{k:"targetGpr",l:"目標粗利率",min:0,max:95}],
+  heat:[{k:"roadLen",l:"道路延長",min:1},{k:"lines",l:"条数（轍）",min:1},
+        {k:"crossCount",l:"横断部 箇所数",min:0},{k:"crossEach",l:"横断部 1箇所あたり延長",min:0},
+        {k:"extra",l:"1条あたり端末余長",min:0},{k:"rollLen",l:"定尺（1巻）",min:1},
+        {k:"minBill",l:"最低請求延長",min:0},{k:"fixedCost",l:"案件固定費",min:0},
+        {k:"targetGpr",l:"目標粗利率",min:0,max:95},{k:"cost",l:"製造原価",min:0},
+        {k:"rollsPerTrip",l:"1便あたり積載",min:0}]
+};
+function checkInputs(tab){
+  var o=S[tab],list=VAL[tab],msgs=[],badKeys={},badRows={};
+  function chk1(v,label,key,into,id){
+    if(isBlank(v)){msgs.push(label+"が未入力です。原価0円として計算されるため、粗利が過大に出ます。");into(key,id);return}
+    if(isBadNum(v)){msgs.push(label+"に数字以外が入っています。");into(key,id)}}
+  for(var i=0;i<list.length;i++){
+    var f=list[i],v=o[f.k];
+    if(isBlank(v)){msgs.push(f.l+"が未入力です。");badKeys[f.k]=1;continue}
+    if(isBadNum(v)){msgs.push(f.l+"に数字以外が入っています。");badKeys[f.k]=1;continue}
+    var n=num(v);
+    if(f.min!=null&&n<f.min){msgs.push(f.l+"は"+f.min+"以上で入力してください。");badKeys[f.k]=1}
+    if(f.max!=null&&n>f.max){msgs.push(f.l+"は"+f.max+"以下で入力してください。");badKeys[f.k]=1}
+  }
+  if(tab==="heat"){
+    var act=num(o.crossCount)>0&&num(o.crossEach)>0&&(o.crossMode||"cut")!=="merge";
+    if(act){
+      var hb=function(k){badKeys[k]=1};
+      if(isBlank(o.crossCost)){msgs.push("横断部 原価が未入力です。0円として計算されるため、粗利が過大に出ます。");hb("crossCost")}
+      else if(isBadNum(o.crossCost)){msgs.push("横断部 原価に数字以外が入っています。");hb("crossCost")}
+      if(isBlank(o.crossReq)){msgs.push("横断部 先方要望価格が未入力です。売上0円として計算されます。");hb("crossReq")}
+      else if(isBadNum(o.crossReq)){msgs.push("横断部 先方要望価格に数字以外が入っています。");hb("crossReq")}
+    }
+  }
+  if(tab==="full"){
+    var q=fQty(num(o.roadLen),o);
+    for(var r2=0;r2<o.rows.length;r2++){
+      var r=o.rows[r2];
+      if(qtyOf(r,q)<=0)continue;
+      var mark=function(key){badRows[r.id]=badRows[r.id]||{};badRows[r.id][key]=1};
+      if(isBlank(r.cost)){msgs.push('品目「'+r.name+'」の原価が未入力です。0円として計算されるため、粗利が過大に出ます。');mark("cost")}
+      else if(isBadNum(r.cost)){msgs.push('品目「'+r.name+'」の原価に数字以外が入っています。');mark("cost")}
+      if(isBlank(r.req)){msgs.push('品目「'+r.name+'」の先方要望価格が未入力です。売上0円として計算されます。');mark("req")}
+      else if(isBadNum(r.req)){msgs.push('品目「'+r.name+'」の先方要望価格に数字以外が入っています。');mark("req")}
+    }
+  }
+  return{msgs:msgs,bad:badKeys,badRows:badRows}}
+function paintBadRows(root,br){
+  var items=root.querySelectorAll("[data-row]"),i,j;
+  for(i=0;i<items.length;i++){
+    var id=+items[i].getAttribute("data-row"),m=(br&&br[id])||{};
+    var ins=items[i].querySelectorAll("input[data-rk]");
+    for(j=0;j<ins.length;j++){
+      var k=ins[j].getAttribute("data-rk");
+      if(m[k])ins[j].classList.add("bad");else ins[j].classList.remove("bad")}}}
+function paintBad(root,bad){
+  var els=root.querySelectorAll("input[data-k]"),i,el;
+  for(i=0;i<els.length;i++){
+    el=els[i];
+    if(bad[el.getAttribute("data-k")]){
+      el.classList.add("bad");
+      /* たたまれた欄の中でエラーが出ても気づけるよう、自動で開く */
+      var d=el.closest?el.closest("details"):null;
+      if(d&&!d.open)d.open=true;
+    }else el.classList.remove("bad")}}
+
+/* ---------- render: full ---------- */
+function renderFullStatic(){
+  var p=S.full;
+  $("f-name").innerHTML=fieldHTML("name","案件名","",p.name,"txt");
+  $("f-proj").innerHTML=
+    fieldHTML("roadLen","道路延長","m",p.roadLen)+
+    fieldHTML("lines","条数（轍）","条",p.lines);
+  $("f-cross").innerHTML=
+    fieldHTML("crossCount","横断部 箇所数","箇所",p.crossCount)+
+    fieldHTML("crossEach","1箇所あたりシート延長","m",p.crossEach);
+  $("f-adv").innerHTML=
+    fieldHTML("circuitMax","1回路の上限延長","m",p.circuitMax)+
+    fieldHTML("circuitsPerPanel","1面あたり収容回路","回路",p.circuitsPerPanel)+
+    fieldHTML("fixedCost","案件固定費（当社負担）","円",p.fixedCost)+
+    fieldHTML("targetGpr","目標粗利率","%",p.targetGpr);
+  bind($("f-name"),p);bind($("f-proj"),p);bind($("f-cross"),p);bind($("f-adv"),p);
+}
+function fieldRowHTML(k,l,u,v){
+  return '<label class="f"><span class="lb">'+esc(l)+'</span><span class="iw">'+
+    '<input data-rk="'+k+'" inputmode="decimal" value="'+esc(v)+'"><span class="u">'+esc(u)+'</span></span></label>'}
+function renderFullRows(){
+  var p=S.full,q=fQty(num(p.roadLen),p),h="";
+  for(var i=0;i<p.rows.length;i++){var r=p.rows[i];
+    var opts="";for(var j=0;j<DRIVERS.length;j++){var d=DRIVERS[j];
+      opts+='<option value="'+d.k+'"'+(d.k===r.driver?" selected":"")+'>'+d.l+'</option>'}
+    h+='<div class="item" data-row="'+r.id+'"><div class="item-head">'+
+       '<input data-rk="name" type="text" aria-label="品目名" value="'+esc(r.name)+'">'+
+       '<select data-rk="driver" class="sel" aria-label="数量の決まり方">'+opts+'</select>'+
+       '<button class="btn del" type="button" data-del="'+r.id+'" aria-label="'+esc(r.name)+' を削除">×</button></div>'+
+       (r.driver==="fixed"
+         ? '<div class="g-4" style="margin-bottom:10px">'+fieldRowHTML("qty","数量","式",r.qty)+'</div>'
+         : '<div class="qline" data-q="'+r.id+'"></div>')+
+       '<div class="g-4">'+
+         fieldRowHTML("cost","原価","円",r.cost)+
+         fieldRowHTML("req","先方要望価格","円",r.req)+
+         fieldRowHTML("design","設計価格","円",r.design)+
+       '</div><div class="rowres" data-res="'+r.id+'"></div></div>'}
+  $("f-items").innerHTML=h;
+  var items=$("f-items").querySelectorAll("[data-row]");
+  for(var n2=0;n2<items.length;n2++){(function(el){
+    var id=+el.getAttribute("data-row");
+    var row=p.rows.filter(function(x){return x.id===id})[0];
+    var ins=el.querySelectorAll("[data-rk]");
+    for(var m2=0;m2<ins.length;m2++){(function(inp){
+      var k=inp.getAttribute("data-rk");
+      inp.addEventListener(inp.tagName==="SELECT"?"change":"input",function(){
+        row[k]=inp.value;
+        if(k==="driver"){renderFullRows();render()}
+        else requestRender()});
+      if(inp.tagName!=="SELECT"&&k!=="name")inp.addEventListener("blur",function(){
+        if(isBlank(inp.value)||isBadNum(inp.value))return;
+        inp.value=fmtField(inp.value);row[k]=inp.value;requestRender()});
+    })(ins[m2])}
+    var db=el.querySelector("[data-del]");
+    if(db)db.addEventListener("click",function(){
+      if(!window.confirm("「"+(row?row.name:"この品目")+"」を削除します。よろしいですか？"))return;
+      p.rows=p.rows.filter(function(x){return x.id!==id});renderFullRows();render()})
+  })(items[n2])}
+  refreshRows();
+}
+function fmtField(v){var n=num(v);return (n%1===0)?n.toLocaleString("ja-JP"):String(n)}
+function refreshRows(){
+  var p=S.full,q=fQty(num(p.roadLen),p),fx=num(p.fixedCost);
+  var qs=$("f-items").querySelectorAll("[data-q]"),i,r;
+  for(i=0;i<qs.length;i++){
+    r=p.rows.filter(function(x){return x.id===+qs[i].getAttribute("data-q")})[0];
+    if(!r)continue;
+    var u=qtyOf(r,q),d=drv(r.driver);
+    qs[i].innerHTML='数量 <b>'+u.toLocaleString("ja-JP")+'</b> '+esc(d.u)+
+      ' <span class="qs">（'+esc(d.l)+'から自動計算）</span>'}
+  var rs=$("f-items").querySelectorAll("[data-res]");
+  for(i=0;i<rs.length;i++){
+    r=p.rows.filter(function(x){return x.id===+rs[i].getAttribute("data-res")})[0];
+    if(!r)continue;
+    var uu=qtyOf(r,q),rev=num(r.req)*uu,cst=num(r.cost)*uu,gp=rev-cst,dsg=num(r.design)*uu;
+    rs[i].innerHTML='<span>要望価格での売上 '+yen(rev)+'</span><span>原価 '+yen(cst)+'</span>'+
+      '<span style="color:'+(gp<0?"var(--off)":"var(--ink)")+'">粗利 <b>'+yen(gp)+'</b>'+
+      (rev>0?'（'+pct(gp/rev)+'）':'')+'</span>'+
+      (dsg>0?'<span>設計価格 '+yen(dsg)+'</span><span>掛率 '+pct(rev/dsg)+'</span>':'')}
+  $("f-sumline").textContent="1回路 "+num(p.circuitMax)+"m ／ 1面 "+num(p.circuitsPerPanel)+"回路 ／ 固定費 "+
+    yen(fx)+" ／ 目標 "+num(p.targetGpr)+"%";
+}
+
+function renderFullOut(){
+  var p=S.full,L=num(p.roadLen),fx=num(p.fixedCost),tg=Math.min(0.95,Math.max(0,num(p.targetGpr)/100));
+  var q=fQty(L,p),B=fTot(p.rows,q,"req",fx);
+  refreshRows();
+  $("f-derived").innerHTML='本線シート実延長 <b>'+q.sheet.toLocaleString("ja-JP")+'m</b> ／ 横断部 <b>'+
+    q.cross.toLocaleString("ja-JP")+'m</b> ／ 合計 <b>'+q.total.toLocaleString("ja-JP")+'m</b>'+
+    '<br>回路数 <b>'+q.circuit+'</b> ／ 盤数 <b>'+q.panel+'</b> '+
+    '<span class="qs">（本線 '+mstr(L)+' × '+num(p.lines)+'条、横断部 '+num(p.crossCount)+'箇所 × '+
+    num(p.crossEach)+'m。回路・盤は合計延長から自動計算）</span>';
+
+  var bp=bePrice(B.rev,B.cost,B.design,tg), tgL="目標 "+num(p.targetGpr)+"%";
+
+  /* 数量（延長）軸の分岐点：1パスで be / bf / beT をまとめて走査 */
+  var ax=axisMaxOf(L), maxL=Math.min(6000,Math.max(ax,600));
+  var sc=beScanFast(function(x){return fTot(p.rows,fQty(x,p),"req",fx)},maxL,tg,fBounds(p,maxL));
+  var be=sc.be,bf=sc.bf,beT=sc.beT;
+  var limF=gprLimFull(p);
+  var beNote=be!=null?null:(limF!=null&&limF<=0
+    ?"単価構成が原価割れのため、延長を伸ばしても黒字化しません"
+    :maxL+"m以内では黒字化しません");
+  var beTNote=beT!=null?null:(limF!=null&&tg>=limF-1e-9
+    ?"延長を伸ばしても上限 "+pct(limF)+" 止まりで届きません"
+    :maxL+"m以内では未到達");
+
+  /* 品目ごとの限界単価（一律値下げした場合） */
+  var lim="",li;
+  if(bp.k!=null&&isFinite(bp.k)&&bp.k>0){
+    var ls=[];
+    for(li=0;li<p.rows.length;li++){var r0=p.rows[li];
+      if(qtyOf(r0,q)<=0)continue;
+      ls.push(esc(r0.name)+" <b>"+yen(num(r0.req)*bp.k)+"</b>")}
+    if(ls.length)lim=(bp.k<=1
+      ?"一律で値下げした場合に粗利ゼロとなる単価（値引きの下限）：<br>"
+      :"粗利ゼロに戻すために必要な単価（要望価格を一律 "+pct(bp.k-1)+" 引き上げた水準）：<br>")+ls.join("　／　")}
+
+  $("f-be").innerHTML=bePriceCardHTML(bp,tg,tgL,lim)+beQtyCardHTML(be,bf,beT,L,"道路延長",tgL,beNote,beTNote);
+  var sp=fSplit(p.rows,q,"req");
+  $("f-split").innerHTML=splitTableHTML([
+    {n:"本線シート",q:mstr(q.sheet),cost:sp.sheet.cost,rev:sp.sheet.rev,u:q.sheet,color:"var(--ice)"},
+    {n:"横断部",q:mstr(q.cross),cost:sp.cross.cost,rev:sp.cross.rev,u:q.cross,color:"var(--rutHot)"},
+    {n:"回路・盤・その他",q:q.circuit+"回路 / "+q.panel+"面",cost:sp.other.cost,rev:sp.other.rev,color:"var(--sub)"},
+    {n:"案件固定費",q:"—",cost:fx,rev:0,cls:"fx"},
+    {n:"合計",q:mstr(q.total),cost:B.cost,rev:B.rev,cls:"tot"}]);
+  var spGpC=sp.cross.rev-sp.cross.cost, spGpS=sp.sheet.rev-sp.sheet.cost;
+  $("f-split-note").innerHTML=q.cross<=0
+    ? '横断部の箇所数を入れると、横断部だけの原価・売価・粗利がここに出ます。'
+    : (sp.cross.n===0
+    ? '横断部の延長 '+mstr(q.cross)+' は入っていますが、数量の決まり方が「横断部延長」の品目がありません。'+
+      '「品目を追加」で横断部のシートを登録すると、単独の原価・売価・粗利が出ます。'
+    : '横断部は単独で '+(spGpC<0?'<b style="color:var(--off)">'+yen(spGpC)+' の持ち出し</b>':'<b>'+yen(spGpC)+'</b> の粗利')+
+      '（本線シートは '+yen(spGpS)+'）。'+
+      (spGpC<0&&spGpS>0?'本線の粗利で横断部の赤字を埋めている状態です。':'')+
+      '損益分岐単価は「その区分の原価 ÷ 数量」で、値引きの下限にあたります。');
+  $("f-pl").innerHTML=plCardHTML(B,tg,"原価（固定費込）");
+
+  /* 打ち手 */
+  var needRev=B.cost/(1-tg), up=Math.max(0,needRev-B.rev);
+  var upPct=B.rev>0?up/B.rev:null, upM=q.sheet>0?up/q.sheet:null;
+  var cut=Math.max(0,B.cost-B.rev*(1-tg));
+  var worst=null;
+  for(var wi=0;wi<p.rows.length;wi++){var rr=p.rows[wi],uu=qtyOf(rr,q);
+    if(uu<=0)continue;var rv=num(rr.req)*uu,g=rv-num(rr.cost)*uu;
+    var gr=rv>0?g/rv:-1;if(worst==null||gr<worst.gr)worst={n:rr.name,gr:gr,gp:g}}
+  var nx='<h2 style="margin:0 0 4px;font-size:15px">次の一手</h2>';
+  if(B.gp<0){
+    nx+='<p class="lead" style="color:var(--off)">先方要望価格では損益分岐点を下回ります。粗利ゼロに戻すだけでも <b>'+
+      yen(-B.gp)+'</b>'+manP(-B.gp)+' 足りません。</p><ul>'+
+      '<li>売上で埋めるなら要望価格から <b>'+(bp.k!=null?pct(bp.k-1):"—")+'</b> の値上げ（限界単価まで戻す）</li>'+
+      '<li>原価で埋めるなら <b>'+yen(-B.gp)+'</b> のコストダウン</li>'+
+      (be!=null&&be>L?'<li>道路延長 <b>'+mstr(be)+'</b> 以上の案件なら、この単価のままでも黒字になります</li>':'')+
+      (worst?'<li>粗利率が最も低い品目は <b>'+esc(worst.n)+'</b>（'+(worst.gr<0?"—":pct(worst.gr))+'）。ここから見直すのが近道です</li>':'')+
+      '</ul>';
+  }else if(up<=0){
+    nx+='<p class="lead" style="color:var(--on)">先方要望価格のままで目標粗利率 '+num(p.targetGpr)+'% を満たしています。'+
+      (bp.room!=null?'損益分岐点まで <b>'+pct(bp.room)+'</b>（'+yen(bp.roomY)+'）の余裕があります。':'')+'</p>';
+  }else{
+    nx+='<p class="lead">先方要望価格でも黒字ですが、目標粗利率 '+num(p.targetGpr)+'% には届きません。埋めるべき差は <b>'+
+      yen(up)+'</b>'+manP(up)+'です。</p><ul>'+
+      '<li>売上で埋めるなら <b>'+yen(up)+'</b> の上乗せ'+(upPct!=null?'（要望価格から <b>'+pct(upPct)+'</b> の値上げ）':'')+'</li>'+
+      (upM!=null&&upM>0?'<li>シート単価に換算すると <b>'+yen(upM)+' /m</b> の上乗せ</li>':'')+
+      '<li>原価で埋めるなら <b>'+yen(cut)+'</b> のコストダウン</li>'+
+      (bp.room!=null?'<li>いま赤字までの余裕は <b>'+pct(bp.room)+'</b>（'+yen(bp.roomY)+'）です。これ以上の値引きは受けられません</li>':'')+
+      (worst?'<li>粗利率が最も低い品目は <b>'+esc(worst.n)+'</b>（'+(worst.gr<0?"—":pct(worst.gr))+'）。ここから見直すのが近道です</li>':'')+
+      '</ul>'}
+  $("f-next").innerHTML=nx;
+
+  /* 価格軸グラフ */
+  var pxB,pxN,pxE,pxT,pxL;
+  if(B.design>0){pxB=B.design;pxN=bp.nowRate;pxE=bp.beRate;pxT=bp.tgRate;pxL="設計価格に対する掛率"}
+  else{pxB=B.rev;pxN=1;pxE=bp.k;pxT=bp.kT;pxL="先方要望価格に対する倍率"}
+  $("f-pchart").innerHTML=priceChartSVG(pxB,B.cost,pxN,pxE,pxT,pxL);
+  $("f-preadout").innerHTML=
+    (bp.k==null?'先方要望価格を入力すると、価格側の分岐点が出ます。'
+     :(bp.room>=0
+       ?'先方要望価格から <b>'+pct(bp.room)+'</b>（'+yen(bp.roomY)+'）まで値引きしても赤字にはなりません。'+
+        (bp.beRate!=null?'<br>損益分岐は設計価格の <b>'+pct(bp.beRate)+'</b>、現在の掛率は <b>'+pct(bp.nowRate)+'</b> です。':'')
+       :'先方要望価格は損益分岐を <b>'+pct(-bp.room)+'</b> 下回っています。粗利ゼロに戻すには <b>'+yen(-bp.roomY)+'</b> の上乗せが必要です。'));
+
+  /* 数量軸グラフ */
+  var msg;
+  if(be==null){msg="この要望価格では、"+maxL+"m まで見ても黒字域がありません。単価か原価の見直しが必要です。"}
+  else if(be<=1){msg="この要望価格なら全延長域で黒字です。距離別単価を持ち出す必要はありません。"}
+  else{msg="要望価格では <b>道路延長 "+be+"m 以上</b>（シート実延長 "+(be*Math.max(1,num(p.lines))).toLocaleString("ja-JP")+
+      "m 相当）で安定して黒字になります。これ未満は赤字域です。"+
+      (bf!=null&&bf<be?"（"+bf+"m 付近で一度黒字になりますが、回路・盤が増える段差で赤字に戻ります）":"")}
+  $("f-road").innerHTML=roadHTML(be,L,ax,msg);
+
+  var cm=num(p.circuitMax),ln=Math.max(1,num(p.lines)),bounds=[];
+  for(var k=1;k<=60&&cm>0;k++){var bv=k*cm/ln;if(bv>ax)break;bounds.push(bv)}
+  var pts=buildPts(ax,bounds,function(x){var qq=fQty(x,p);
+    return{L:x,a:fTot(p.rows,qq,"req",fx).gp,b:fTot(p.rows,qq,"design",fx).gp}});
+  $("f-chart").innerHTML=chartSVG(pts,ax,L);
+  $("f-readout").innerHTML='本案件（道路延長 '+mstr(L)+'）の粗利　先方要望価格 <b style="color:'+
+    (B.gp<0?"var(--off)":"var(--ink)")+'">'+yen(B.gp)+'</b>　／　設計価格で受注した場合 <b>'+
+    yen(fTot(p.rows,q,"design",fx).gp)+'</b>';
+
+  return{B:B,bp:bp,be:be,dsg:B.design,tg:tg,split:[
+      {n:"本線シート",cost:sp.sheet.cost,rev:sp.sheet.rev},
+      {n:"横断部",cost:sp.cross.cost,rev:sp.cross.rev},
+      {n:"回路・盤・その他",cost:sp.other.cost,rev:sp.other.rev},
+      {n:"案件固定費",cost:fx,rev:0}],
+    total:B.gp,totalLabel:"先方要望価格での当社粗利",
+    sub:"損益分岐 要望価格の "+pct(bp.k)+"（値引き余地 "+pct(bp.room)+"） ／ 分岐延長 "+
+      (be==null?"—":(be<=1?"下限なし":mstr(be))),gprForTarget:B.gpr}}
+
+/* ---------- render: heat ---------- */
+function renderHeatStatic(){
+  var s=S.heat;
+  $("h-name").innerHTML=fieldHTML("name","案件名","",s.name,"txt");
+  $("h-proj").innerHTML=
+    fieldHTML("roadLen","道路延長","m",s.roadLen)+
+    fieldHTML("lines","条数（轍）","条",s.lines)+
+    fieldHTML("rollLen","定尺（1巻）","m",s.rollLen);
+  $("h-adv").innerHTML=
+    fieldHTML("extra","1条あたり端末余長","m",s.extra)+
+    fieldHTML("minBill","最低請求延長","m",s.minBill)+
+    fieldHTML("fixedCost","案件固定費（当社負担）","円",s.fixedCost)+
+    fieldHTML("targetGpr","目標粗利率","%",s.targetGpr);
+  $("h-price").innerHTML=
+    fieldHTML("cost","製造原価","円",s.cost)+
+    fieldHTML("req","先方要望価格","円",s.req)+fieldHTML("design","設計価格","円",s.design);
+  var co="";for(var ci=0;ci<CMODES.length;ci++){co+='<option value="'+CMODES[ci].k+'"'+((s.crossMode||"cut")===CMODES[ci].k?" selected":"")+'>'+CMODES[ci].l+'</option>'}
+  $("h-cross").innerHTML=
+    fieldHTML("crossCount","横断部 箇所数","箇所",s.crossCount)+
+    fieldHTML("crossEach","1箇所あたりシート延長","m",s.crossEach)+
+    '<label class="f"><span class="lb">手配の考え方</span><select class="sel" data-k="crossMode">'+co+'</select></label>';
+  $("h-cross-price").innerHTML=
+    fieldHTML("crossCost","横断部 原価","円",s.crossCost)+
+    fieldHTML("crossReq","横断部 先方要望価格","円",s.crossReq)+
+    fieldHTML("crossDesign","横断部 設計価格","円",s.crossDesign);
+  var fo="";for(var i=0;i<FMODES.length;i++){fo+='<option value="'+FMODES[i].k+'"'+(FMODES[i].k===s.freightMode?" selected":"")+'>'+FMODES[i].l+'</option>'}
+  $("h-freight").innerHTML=
+    fieldHTML("freightPerTrip","1便あたり運賃","円",s.freightPerTrip)+
+    fieldHTML("rollsPerTrip","1便あたり積載","巻",s.rollsPerTrip)+
+    '<label class="f"><span class="lb">請求方式</span><select class="sel" data-k="freightMode">'+fo+'</select></label>'+
+    fieldHTML("freightFlat","定額請求額","円",s.freightFlat)+
+    '<div class="tip" style="grid-column:1/-1;margin-top:0">便数は 供給延長 ÷（1便あたり積載 × 定尺）で計算します。切売りで手配する横断部材も、長さぶんとして積載に数えます。</div>';
+  bind($("h-name"),s);bind($("h-proj"),s);bind($("h-adv"),s);bind($("h-price"),s);
+  bind($("h-cross"),s);bind($("h-cross-price"),s);bind($("h-freight"),s);
+}
+function renderHeatOut(){
+  var s=S.heat,L=num(s.roadLen),tg=Math.min(0.95,Math.max(0,num(s.targetGpr)/100));
+  var B=hCalc(L,s,"req",s.method),fr=hFreight(B.supply,s);
+  var roll=num(s.rollLen), tgL="目標 "+num(s.targetGpr)+"%";
+
+  $("h-sumline").textContent="余長 "+num(s.extra)+"m/条 ／ 最低請求 "+num(s.minBill)+"m ／ 固定費 "+
+    yen(num(s.fixedCost))+" ／ 目標 "+num(s.targetGpr)+"%";
+
+  /* 切り出し図：同一品目なら合計、別品目なら本線のみを図示する */
+  var cs=B.merged?{need:B.need,supply:B.supply,rolls:B.rolls,loss:B.loss,lab:"本線＋横断部"}
+                 :{need:B.main.need,supply:B.main.supply,rolls:B.main.rolls,loss:B.main.loss,lab:"本線"};
+  cs.lossRate=cs.supply>0?cs.loss/cs.supply:0;
+  var cutInner="";
+  if(cs.rolls>0&&roll>0){
+    if(cs.rolls>18){cutInner='<div style="display:flex;height:48px;border:1px solid var(--line);border-radius:3px;overflow:hidden">'+
+      '<div style="width:'+(cs.need/cs.supply*100)+'%;background:var(--ice)"></div><div style="flex:1;background:var(--scrap)"></div></div>'}
+    else{var c="";for(var i=0;i<cs.rolls;i++){var used=Math.max(0,Math.min(roll,cs.need-i*roll));
+      c+='<i><b style="height:100%;width:'+(used/roll*100)+'%"></b></i>'}
+      cutInner='<div class="cut">'+c+'</div>'}
+  }else{cutInner='<div class="tip">延長と定尺を入力すると、切り出しの内訳がここに出ます。</div>'}
+  var xNote="";
+  if(B.crossOn&&!B.merged){
+    xNote=B.mode==="roll"
+      ? '<br>横断部は別品目・定尺手配のため別勘定です（必要 '+mstr(B.cross.need)+' / 供給 '+mstr(B.cross.supply)+
+        ' / 端材 '+mstr(B.cross.loss)+'、原価相当 '+yen(B.cross.loss*num(s.crossCost))+'）。'
+      : '<br>横断部 '+mstr(B.cross.need)+' は必要長さで手配する前提のため、端材は出ません。'}
+  $("h-cut").innerHTML='<div class="lede" style="margin-bottom:10px">'+cs.lab+'の必要延長 <b>'+mstr(cs.need)+
+    '</b> を、定尺 '+roll+'m で切り出した内訳です。</div>'+cutInner+
+    '<div class="legend"><span><i class="sw" style="background:var(--ice)"></i>使用 '+mstr(cs.need)+'</span>'+
+    '<span><i class="sw" style="background:var(--scrap)"></i>端材 '+mstr(cs.loss)+'（'+pct(cs.lossRate)+'）</span>'+
+    '<span style="font-family:var(--mono);color:var(--faint)">'+roll+'m巻 × '+cs.rolls+'本</span></div>'+
+    '<div class="tip" style="color:var(--sub);font-size:13px">端材の原価相当は <b>'+yen(cs.loss*num(s.cost))+
+    '</b>。実延長課金だと、これが丸ごと当社負担になります。'+xNote+'</div>';
+
+  /* 横断部の入力欄の状態 */
+  $("h-cross-price").style.opacity=B.merged?"0.45":"1";
+  var cpi=$("h-cross-price").querySelectorAll("input");
+  for(var di=0;di<cpi.length;di++)cpi[di].disabled=B.merged;
+  $("h-cross-note").innerHTML=B.merged
+    ? '「本線と同一品目」を選んでいるため、上の横断部単価は使わず、本線の原価・要望価格・設計価格で計算しています。巻も本線と合算して取ります。'
+    : (B.mode==="roll"
+      ? '横断部を定尺 '+roll+'m の巻で別手配する前提です。短い横断部ほど端材率が高くなります。'
+      : '横断部を必要長さで手配する前提です（端材なし）。定尺でしか買えない場合は「定尺の巻で手配」に変えてください。');
+
+  /* 課金方式マトリクス — 方式ごとの損益分岐単価 */
+  var mh="",clears=[];
+  for(var j=0;j<METHODS.length;j++){var mt=METHODS[j];
+    var b=hCalc(L,s,"req",mt.k);
+    var bu=b.bill>0?b.cost/b.bill:null;
+    if(b.gp>=0&&ok(b.gpr,tg))clears.push(mt.l);
+    var bad=b.gp<0,good=!bad&&ok(b.gpr,tg),sel=mt.k===s.method;
+    mh+='<button type="button" class="mrow" data-m="'+mt.k+'" aria-pressed="'+sel+'">'+
+      '<div class="mh"><div><div class="mn">'+mt.l+'</div><div class="md">'+mt.d+'<br>課金延長 '+mstr(b.bill)+
+      '（必要 '+mstr(b.need)+' / 供給 '+mstr(b.supply)+'）</div></div>'+
+      '<div class="pick">'+(sel?"選択中":"タップで選択")+'</div></div>'+
+      '<div class="mcells">'+
+        '<div class="mcell"><div class="cl" style="color:var(--ice)">損益分岐単価</div><div class="cv">'+
+          (bu==null?"—":yen(bu)+" /m")+'</div><div class="cp" style="color:var(--sub)">要望 '+yen(num(s.req))+' /m</div></div>'+
+        '<div class="mcell" style="background:'+(bad?"var(--offSoft)":good?"var(--onSoft)":"var(--warnSoft)")+'"><div class="cl" style="color:var(--warn)">要望価格での粗利</div>'+
+        '<div class="cv" style="color:'+(bad?"var(--off)":"var(--ink)")+'">'+yen(b.gp)+'</div>'+
+        '<div class="cp" style="color:'+(bad?"var(--off)":good?"var(--on)":"var(--sub)")+'">'+pct(b.gpr)+'</div></div>'+
+      '</div></button>'}
+  $("h-matrix").innerHTML=mh;
+  var rows=$("h-matrix").querySelectorAll("[data-m]");
+  for(var r2=0;r2<rows.length;r2++){(function(el){
+    el.addEventListener("click",function(){s.method=el.getAttribute("data-m");render()})})(rows[r2])}
+
+  $("h-advice").style.background=clears.length?"var(--onSoft)":"var(--offSoft)";
+  $("h-advice").innerHTML=clears.length
+    ? '先方要望価格でも目標粗利率をクリアできる課金方式：<b style="color:var(--on)">'+clears.join(" / ")+
+      '</b>。単価を動かさず、請求ルールだけで着地できます。'
+    : 'どの課金方式でも、先方要望価格では目標粗利率に届きません。単価そのものの見直しが必要です。';
+
+  /* 分岐点 */
+  var bp=bePrice(B.rev,B.cost,B.partnerRev,tg);
+  var maxLh=Math.min(6000,Math.max(axisMaxOf(L),600));
+  var scH=beScanFast(function(x){return hCalc(x,s,"req",s.method)},maxLh,tg,hBounds(s,maxLh));
+  var beMin=scH.be,bfMin=scH.bf,beTq=scH.beT;
+  var limH=gprLimHeat(s);
+  var beNoteH=beMin!=null?null:(limH!=null&&limH<=0
+    ?"要望単価が原価以下のため、延長を伸ばしても黒字化しません"
+    :maxLh+"m以内では黒字化しません");
+  var beTNoteH=beTq!=null?null:(limH!=null&&tg>=limH-1e-9
+    ?"延長を伸ばしても上限 "+pct(limH)+" 止まりで届きません"
+    :maxLh+"m以内では未到達");
+  var beU=B.bill>0?B.cost/B.bill:null;
+  var lim=beU==null?"":'この課金方式（'+mth(s.method).l+'）の損益分岐単価は <b>'+yen(beU)+' /m</b>。'+
+    '課金延長 '+mstr(B.bill)+' に対して、先方要望価格は '+yen(num(s.req))+' /m です。';
+  $("h-be").innerHTML=bePriceCardHTML(bp,tg,tgL,lim)+beQtyCardHTML(beMin,bfMin,beTq,L,"道路延長",tgL,beNoteH,beTNoteH);
+
+  var Bp={rev:B.rev,cost:B.cost,gp:B.gp,gpr:B.gpr,design:B.partnerRev,
+          partnerGp:B.partnerGp,partnerGpr:B.partnerGpr,rate:B.rate};
+  var mq=function(seg){return mstr(seg.need)+"（供給 "+mstr(seg.supply)+(B.merged&&B.crossOn?"・按分":"")+"）"};
+  $("h-split").innerHTML=splitTableHTML([
+    {n:"本線",q:mq(B.main),cost:B.main.cost,rev:B.main.rev,u:B.main.bill,color:"var(--ice)"},
+    {n:"横断部",q:mq(B.cross),cost:B.cross.cost,rev:B.cross.rev,u:B.cross.bill,color:"var(--rutHot)"},
+    {n:"小計（商品）",q:mstr(B.need),cost:B.cost-num(s.fixedCost),rev:B.rev,u:B.bill,un:"固定費抜き",cls:"sub"},
+    {n:"案件固定費",q:"—",cost:num(s.fixedCost),rev:0,cls:"fx"},
+    {n:"合計",q:mstr(B.need),cost:B.cost,rev:B.rev,u:B.bill,un:"固定費込",cls:"tot"}]);
+  var baseNote='損益分岐単価は各行の「原価 ÷ 課金数量」です。区分行と小計は固定費抜き、合計は固定費込み——値引きの最終防衛線としては<b>合計の値</b>を使ってください。';
+  $("h-split-note").innerHTML=(!B.crossOn
+    ? '横断部の箇所数を入れると、横断部だけの原価・売価・粗利・損益分岐単価がここに出ます。'
+    : '横断部は単独で '+(B.cross.gp<0?'<b style="color:var(--off)">'+yen(B.cross.gp)+' の持ち出し</b>':'<b>'+yen(B.cross.gp)+'</b> の粗利')+
+      '（本線は '+yen(B.main.gp)+'）。'+
+      (B.merged?'同一品目のため、端材と巻数は必要長さの比で按分した会計上の値です（現物がこの長さで分かれるわけではありません）。':'')+
+      (B.cross.gp<0&&B.main.gp>0?'本線の粗利で横断部の赤字を埋めている状態です。':''))+
+    '<br>'+baseNote;
+  $("h-pl").innerHTML=plCardHTML(Bp,tg,"原価（供給延長＋固定費）");
+
+  /* 運搬 */
+  $("h-freight-out").innerHTML=
+    statHTML("便数",fr.trips+" 便")+statHTML("運搬原価",yen(fr.cost))+
+    statHTML("先方への請求",yen(fr.bill))+
+    statHTML("運搬損益",yen(fr.gp),fr.gp<0?"var(--off)":(fr.gp>0?"var(--on)":null))+
+    statHTML("案件トータル粗利",yen(B.gp+fr.gp),(B.gp+fr.gp)<0?"var(--off)":null,false,man(B.gp+fr.gp));
+
+  /* 打ち手 */
+  var needRev=B.cost/(1-tg), up=Math.max(0,needRev-B.rev);
+  var upPct=B.rev>0?up/B.rev:null, upM=B.bill>0?up/B.bill:null;
+  var cut=Math.max(0,B.cost-B.rev*(1-tg));
+  var nx='<h2 style="margin:0 0 4px;font-size:15px">次の一手</h2>';
+  if(up<=0&&fr.gp>=0){
+    nx+='<p class="lead" style="color:var(--on)">先方要望価格のままで目標粗利率 '+num(s.targetGpr)+'% を満たしています。'+
+      (bp.room!=null?'損益分岐点まで <b>'+pct(bp.room)+'</b>（'+yen(bp.roomY)+'）の余裕があります。':'')+'運搬も赤字ではありません。</p>';
+  }else{
+    nx+='<p class="lead">'+(B.gp<0?'先方要望価格では損益分岐点を <b>'+yen(-B.gp)+'</b> 下回ります。'
+      :(up>0?'目標粗利率 '+num(s.targetGpr)+'% に対し、差は <b>'+yen(up)+'</b>'+manP(up)+'です。'
+            :'商品の粗利は目標を満たしていますが、運搬が <b>'+yen(fr.gp)+'</b> の赤字です。'))+'</p><ul>';
+    var others=clears.filter(function(x){return x!==mth(s.method).l});
+    if(up>0&&others.length)
+      nx+='<li>単価を動かさずに済む選択肢：課金方式を <b>'+others.join(" / ")+'</b> に変える</li>';
+    if(up>0){
+      if(beU!=null)nx+='<li>粗利ゼロの単価は <b>'+yen(beU)+' /m</b>。ここが値引きの限界です</li>';
+      nx+='<li>売上で埋めるなら <b>'+yen(up)+'</b> の上乗せ'+(upPct!=null?'（要望価格から <b>'+pct(upPct)+'</b> の値上げ）':'')+'</li>';
+      if(upM!=null&&upM>0)nx+='<li>単価に換算すると <b>'+yen(upM)+' /m</b> の上乗せ</li>';
+      nx+='<li>原価で埋めるなら <b>'+yen(cut)+'</b> のコストダウン</li>';
+      if(B.loss>0&&num(s.cost)>0){
+        var lossCost=B.loss*num(s.cost), share=lossCost/up;
+        nx+='<li>端材 '+mstr(B.loss)+'（原価相当 '+yen(lossCost)+'）を巻単位課金で先方負担にすると、'+
+          (share>=0.95?'この差はほぼ埋まります'
+           :share>=0.3?'差の '+Math.round(share*100)+'% 程度を埋められます'
+           :'差の '+Math.round(share*100)+'% しか埋まりません。単価の見直しが本筋です')+'</li>'}
+    }
+    if(fr.gp<0)nx+='<li>運搬が '+yen(fr.gp)+' の持ち出しです。請求方式を「実費請求」にすると解消します</li>';
+    if(beMin!=null&&beMin>1)nx+='<li>短延長案件への備えとして、最低請求延長を <b>'+beMin+'m</b> 以上に設定しておくと赤字を避けられます</li>';
+    nx+='</ul>'}
+  $("h-next").innerHTML=nx;
+
+  /* 価格軸グラフ */
+  var pxB,pxN,pxE,pxT,pxL;
+  if(B.partnerRev>0){pxB=B.partnerRev;pxN=bp.nowRate;pxE=bp.beRate;pxT=bp.tgRate;pxL="設計価格に対する掛率"}
+  else{pxB=B.rev;pxN=1;pxE=bp.k;pxT=bp.kT;pxL="先方要望価格に対する倍率"}
+  $("h-pchart").innerHTML=priceChartSVG(pxB,B.cost,pxN,pxE,pxT,pxL);
+  $("h-preadout").innerHTML=
+    (bp.k==null?'先方要望価格を入力すると、価格側の分岐点が出ます。'
+     :(bp.room>=0
+       ?'先方要望価格から <b>'+pct(bp.room)+'</b>（'+yen(bp.roomY)+'）まで値引きしても赤字にはなりません。'+
+        (beU!=null?'単価では <b>'+yen(beU)+' /m</b> が下限です。':'')
+       :'先方要望価格は損益分岐を <b>'+pct(-bp.room)+'</b> 下回っています。粗利ゼロに戻すには <b>'+yen(-bp.roomY)+'</b> の上乗せが必要です。'));
+  if(B.crossOn&&!B.merged)$("h-preadout").innerHTML+=
+    '<br><span style="color:var(--faint)">※価格側の分岐点は、本線と横断部の単価を同じ比率で上下させた場合の値です。</span>';
+
+  /* 延長カーブ */
+  var lbl=mth(s.method).l;
+  $("h-curve-title").textContent="粗利カーブ（"+lbl+"）";
+  var ax=axisMaxOf(L),ln=Math.max(1,num(s.lines)),ex=num(s.extra),bounds=[];
+  for(var k=1;k<=60&&roll>0;k++){var bv=k*roll/ln-ex;if(bv>ax)break;if(bv>0)bounds.push(bv)}
+  var pts=buildPts(ax,bounds,function(x){
+    return{L:x,a:hCalc(x,s,"req",s.method).gp,b:hCalc(x,s,"design",s.method).gp}});
+  $("h-chart").innerHTML=chartSVG(pts,ax,L);
+  $("h-readout").innerHTML='本案件（道路延長 '+mstr(L)+'）の粗利　先方要望価格 <b style="color:'+
+    (B.gp<0?"var(--off)":"var(--ink)")+'">'+yen(B.gp)+'</b>　／　設計価格で受注した場合 <b>'+
+    yen(hCalc(L,s,"design",s.method).gp)+'</b>'+
+    (beMin==null?'<br>この方式・単価では、表示レンジ内に安定した黒字域がありません。'
+      :(beMin<=1?'<br>この方式・単価なら全延長域で黒字です。'
+      :'<br>安定して黒字になるのは <b>道路延長 '+beMin+'m 以上</b>です。'));
+
+  var total=B.gp+fr.gp;
+  return{B:B,bp:bp,be:beMin,dsg:B.partnerRev,tg:tg,split:[
+      {n:"本線",cost:B.main.cost,rev:B.main.rev},
+      {n:"横断部",cost:B.cross.cost,rev:B.cross.rev},
+      {n:"案件固定費",cost:num(s.fixedCost),rev:0}],
+    total:total,totalLabel:"要望価格での案件トータル粗利",
+    sub:"商品 "+yen(B.gp)+" ／ 運搬 "+yen(fr.gp)+" ／ 損益分岐 要望価格の "+pct(bp.k),gprForTarget:B.gpr}}
+
+/* ---------- wiring ---------- */
+function bind(root,obj){
+  var els=root.querySelectorAll("[data-k]");
+  for(var i=0;i<els.length;i++){(function(el){
+    var k=el.getAttribute("data-k");
+    el.addEventListener(el.tagName==="SELECT"?"change":"input",function(){obj[k]=el.value;requestRender()});
+    if(el.tagName==="INPUT"&&!el.classList.contains("txt"))
+      el.addEventListener("blur",function(){
+        if(isBlank(el.value)||isBadNum(el.value))return;
+        el.value=fmtField(el.value);obj[k]=el.value;requestRender()});
+  })(els[i])}
+}
+var rafPend=false;
+function requestRender(){
+  if(rafPend)return;rafPend=true;
+  var raf=window.requestAnimationFrame||function(f){setTimeout(f,16)};
+  raf(function(){rafPend=false;render()})}
+var saveTimer=null,LAST=null;
+function render(){
+  var isFull=S.tab==="full";
+  $("app-full").hidden=!isFull;$("app-heat").hidden=isFull;
+  $("tab-full").setAttribute("aria-selected",isFull);$("tab-heat").setAttribute("aria-selected",!isFull);
+
+  var chk=checkInputs(S.tab);
+  paintBad(isFull?$("app-full"):$("app-heat"),chk.bad);
+  if(isFull)paintBadRows($("f-items"),chk.badRows);
+  if(chk.msgs.length){
+    $("warn").hidden=false;
+    $("warn").innerHTML='<div class="warnbar"><b>入力を確認してください。</b>下の数字はこの状態のまま計算しています。<ul><li>'+
+      chk.msgs.map(esc).join("</li><li>")+'</li></ul></div>'}
+  else{$("warn").hidden=true;$("warn").innerHTML=""}
+
+  var out=isFull?renderFullOut():renderHeatOut();
+  LAST=out;
+  var tone,txt;
+  if(out.total<0){tone="var(--off)";txt="赤字 — この条件では受けられません"}
+  else if(!ok(out.gprForTarget,out.tg)){tone="var(--warn)";txt="黒字だが目標粗利率に未達"}
+  else{tone="var(--on)";txt="目標粗利率をクリア"}
+  $("lamp").style.background=tone;
+  $("verdict").textContent=txt;
+  $("hero-lb").textContent=out.totalLabel;
+  $("hero-v").textContent=yen(out.total);
+  $("hero-v").style.color=out.total<0?"#F0A69E":"#F2F6F7";
+  var mm=man(out.total);
+  $("hero-sub").textContent=(mm?mm+"　·　":"")+out.sub;
+
+  clearTimeout(saveTimer);saveTimer=setTimeout(function(){lsSet(K_STATE,JSON.stringify(S))},400);
+}
+$("tab-full").addEventListener("click",function(){S.tab="full";render();window.scrollTo(0,0)});
+$("tab-heat").addEventListener("click",function(){S.tab="heat";render();window.scrollTo(0,0)});
+$("f-add").addEventListener("click",function(){
+  var id=Date.now();while(S.full.rows.filter(function(x){return x.id===id}).length)id++;
+  S.full.rows.push({id:id,name:"その他部材",driver:"fixed",qty:"1",cost:"0",req:"0",design:"0"});
+  renderFullRows();render()});
+$("reset-btn").addEventListener("click",function(){
+  if(!window.confirm("入力内容をすべて初期値に戻します。保存した案件は消えません。よろしいですか？"))return;
+  S=clone(DEF);lsDel(K_STATE);
+  renderFullStatic();renderFullRows();renderHeatStatic();render();window.scrollTo(0,0)});
+
+/* ---------- 保存 / コピー ---------- */
+function loadCases(){try{var a=JSON.parse(lsGet(K_CASES)||"[]");return a instanceof Array?a:[]}catch(e){return[]}}
+function renderCases(){
+  var cs=loadCases();
+  if(!cs.length){$("save-list").innerHTML='<div class="tip" style="margin:0">まだ保存された案件はありません。「現在の内容を保存」でこのiPadに残せます。</div>';return}
+  var h="";for(var i=0;i<cs.length;i++){var c=cs[i];
+    h+='<div class="saved"><div style="flex:1;min-width:0"><div class="nm">'+esc(c.name)+
+       ' <span style="color:var(--faint);font-size:12px">'+(c.tab==="full"?"フルセット":"ヒーター単体")+'</span></div>'+
+       '<div class="dt">'+esc(c.at)+'</div></div>'+
+       '<button class="btn sm" type="button" data-load="'+c.id+'">読み込む</button>'+
+       '<button class="btn del" type="button" data-rm="'+c.id+'" aria-label="'+esc(c.name)+' を削除">×</button></div>'}
+  $("save-list").innerHTML=h;
+  var ls=$("save-list").querySelectorAll("[data-load]");
+  for(var a=0;a<ls.length;a++){(function(b){b.addEventListener("click",function(){
+    var id=+b.getAttribute("data-load"),c=loadCases().filter(function(x){return x.id===id})[0];
+    if(!c)return;
+    if(!window.confirm("「"+c.name+"」を読み込みます。現在の入力内容は置き換わります。よろしいですか？"))return;
+    var wasOld=!(c.data&&("crossCount" in c.data));
+    S.tab=c.tab;S[c.tab]=migTab(c.tab,c.data);
+    renderFullStatic();renderFullRows();renderHeatStatic();render();
+    $("save-note").textContent="「"+c.name+"」を読み込みました。"+
+      (wasOld?"（旧形式の保存データのため、横断部0として変換しました）":"");
+    window.scrollTo(0,0)})})(ls[a])}
+  var rs=$("save-list").querySelectorAll("[data-rm]");
+  for(var d=0;d<rs.length;d++){(function(b){b.addEventListener("click",function(){
+    var id=+b.getAttribute("data-rm"),c=loadCases().filter(function(x){return x.id===id})[0];
+    if(!window.confirm("「"+(c?c.name:"この案件")+"」を削除します。よろしいですか？"))return;
+    lsSet(K_CASES,JSON.stringify(loadCases().filter(function(x){return x.id!==id})));
+    renderCases();$("save-note").textContent="削除しました。"})})(rs[d])}
+}
+$("save-btn").addEventListener("click",function(){
+  var d=S[S.tab];
+  var cs=[{id:Date.now(),name:d.name||"無題の案件",tab:S.tab,data:clone(d),
+           at:new Date().toLocaleString("ja-JP")}].concat(loadCases()).slice(0,30);
+  $("save-note").textContent=lsSet(K_CASES,JSON.stringify(cs))
+    ?"保存しました。":"保存できませんでした。Safariのプライベートブラウズを解除してお試しください。";
+  renderCases()});
+
+function summaryText(){
+  if(!LAST)return "";
+  var isFull=S.tab==="full",d=S[S.tab],B=LAST.B,bp=LAST.bp,be=LAST.be;
+  var head="【融雪 損益分岐シミュレーション】"+(isFull?"フルセット":"ヒーター単体")+"\n"+
+    "案件名："+(d.name||"無題の案件")+"\n"+
+    "条件：道路延長 "+mstr(num(d.roadLen))+" ／ 条数 "+num(d.lines)+"条";
+  if(!isFull)head+=" ／ 定尺 "+num(d.rollLen)+"m ／ 課金方式 "+mth(d.method).l;
+  return head+"\n"+
+    "──────────\n"+
+    "原価　"+yen(B.cost)+"\n"+
+    "先方要望価格での売上　"+yen(B.rev)+"\n"+
+    "設計価格の総額　"+yen(LAST.dsg)+"\n"+
+    "当社粗利　"+yen(B.gp)+"（"+pct(B.gpr)+"）\n"+
+    "──────────\n"+
+    (LAST.split||[]).map(function(g){
+      return "  "+g.n+"：原価 "+yen(g.cost)+" ／ 売価 "+yen(g.rev)+" ／ 粗利 "+yen(g.rev-g.cost)}).join("\n")+"\n"+
+    "──────────\n"+
+    "損益分岐売上　"+yen(bp.beRev)+"\n"+
+    "損益分岐の単価水準　要望価格の "+pct(bp.k)+"（値引き余地 "+pct(bp.room)+" ／ "+yen(bp.roomY)+"）\n"+
+    "損益分岐掛率　"+pct(bp.beRate)+"（現在 "+pct(bp.nowRate)+"）\n"+
+    "損益分岐延長　"+(be==null?"—":(be<=1?"下限なし":mstr(be)))+"\n"+
+    LAST.totalLabel+"　"+yen(LAST.total)+manP(LAST.total)+"\n"+
+    "判定："+$("verdict").textContent+"（目標 "+num(d.targetGpr)+"%）";
+}
+$("copy-btn").addEventListener("click",function(){
+  var t=summaryText();
+  $("copy-wrap").hidden=false;$("copy-area").value=t;
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(t).then(function(){$("save-note").textContent="結果をコピーしました。"},
+      function(){$("save-note").textContent="下の枠を長押しして、手動でコピーしてください。"})
+  }else{
+    $("copy-area").focus();$("copy-area").setSelectionRange(0,t.length);
+    $("save-note").textContent="下の枠を長押しして、手動でコピーしてください。"}
+});
+
+renderFullStatic();renderFullRows();renderHeatStatic();renderCases();render();
+</script>
+</body>
+</html>
